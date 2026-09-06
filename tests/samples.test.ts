@@ -26,3 +26,16 @@ test('continuation keeps parents, stops on restrictions and does not mark partia
  const r=await query(io,'theytree','R-YP5527',false,new AbortController().signal,true);assert.equal(calls,1);assert.equal(r.nodes.find(n=>n.name==='R-YP6497')?.parent,'R-YP5527');assert.equal(r.complete,false);
  status=403;const blocked=await query(io,'theytree','R-YP5527',false,new AbortController().signal,true);assert.equal(blocked.complete,false);assert.match(blocked.message,/403/);assert.equal(blocked.nodes.length,2);
 });
+
+test('FTDNA alias file 403 resolves only through unique search and canonical root SNP evidence',async()=>{
+ for(const mode of ['verified','no-snp','ambiguous','wrong-root','denied','cross-lineage']){
+  const data=new Map<string,any>(),urls:string[]=[];const raw=JSON.parse(fixture('ftdna-O-M175-root.json'));
+  if(mode==='no-snp')raw.node.variants=raw.node.variants.filter((v:string)=>v!=='F175');if(mode==='wrong-root')raw.node.name='O-OTHER';
+  const io={get:async(k:string)=>data.get(k),set:async(k:string,v:any)=>{data.set(k,v);},now:()=>100000,id:()=>'',request:async(url:string)=>{
+   urls.push(url);if(url.includes('HaplogroupSearch'))return {status:mode==='denied'?403:200,url,body:JSON.stringify(mode==='ambiguous'?[{name:'O-M175'},{name:'O-F265'}]:[{name:mode==='cross-lineage'?'R-M175':'O-M175',exact:false}])};
+   return url.endsWith('O-M175.json')?{status:200,url,body:JSON.stringify(raw)}:{status:403,url,body:'AccessDenied'};
+  }};
+  if(mode==='verified'){const r=await query(io,'ftdna','O-F175',false,new AbortController().signal);assert.equal(r.target,'O-M175');assert.match(r.mapping,/F175/);assert.equal(urls.length,3);assert.equal((await query(io,'ftdna','O-F175',false,new AbortController().signal)).cached,true);assert.equal(urls.length,3);}
+  else{await assert.rejects(query(io,'ftdna','O-F175',false,new AbortController().signal),/403/);assert.equal(data.size,0);}
+ }
+});

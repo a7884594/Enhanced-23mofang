@@ -27,8 +27,29 @@ export async function query(io:IO,provider:Provider,value:string,refresh:boolean
     result.complete=result.nodes.every(n=>!n.pending);result.updatedAt=io.now();if(signal.aborted)throw Error('已取消');await io.set(key,result);return result;
   }
   const url=treeLink(provider,target),base:Result={provider,marker:name,target,url,mapping,nodes:[],updatedAt:io.now(),complete:false,status:'error',message:''};
-  const request=provider==='ftdna'?`https://discover.familytreedna.com/resources/classictree-y/${encodeURIComponent(target)}.json`:provider==='theytree'?`https://www.theytree.com/api/ysnp/theytree/?haplogroup=${encodeURIComponent(target)}`:url;
-  const response=await io.request(request,signal);if(signal.aborted)throw Error('已取消');
+  let request=provider==='ftdna'?`https://discover.familytreedna.com/resources/classictree-y/${encodeURIComponent(target)}.json`:provider==='theytree'?`https://www.theytree.com/api/ysnp/theytree/?haplogroup=${encodeURIComponent(target)}`:url;
+  let response=await io.request(request,signal);if(signal.aborted)throw Error('已取消');
+  // Discover resolves aliases before requesting its canonical static file. Missing
+  // alias filenames can return AccessDenied (403), not just 404. A search hit alone
+  // is insufficient: require the canonical root's own variants to contain the SNP.
+  if(provider==='ftdna'&&[403,404].includes(response.status)){
+    const searchUrl=`https://discover.familytreedna.com/HaplogroupSearch/${encodeURIComponent(target)}`;
+    const search=await io.request(searchUrl,signal);if(signal.aborted)throw Error('已取消');
+    if(search.status===200&&search.body.length<200000&&new URL(search.url).origin===new URL(searchUrl).origin){
+      let hits:any;try{hits=JSON.parse(search.body);}catch{hits=null;}
+      const candidates=Array.isArray(hits)?[...new Set(hits.map(h=>marker(h?.name)).filter((m):m is string=>!!m&&m.split('-')[0]===target.split('-')[0]))]:[];
+      if(candidates.length===1&&candidates[0]!==target&&target.includes('-')){
+        const canonical=candidates[0],canonicalUrl=`https://discover.familytreedna.com/resources/classictree-y/${encodeURIComponent(canonical)}.json`;
+        const candidate=await io.request(canonicalUrl,signal);if(signal.aborted)throw Error('已取消');
+        if(candidate.status===200&&candidate.body.length<=8_000_000&&new URL(candidate.url).origin===new URL(canonicalUrl).origin){
+          let raw:any;try{raw=JSON.parse(candidate.body);}catch{raw=null;}
+          const own=raw?.node;
+          const values=[...(Array.isArray(own?.variants)?own.variants:[]),...(Array.isArray(own?.synonyms)?own.synonyms:[])].filter((v):v is string=>typeof v==='string').flatMap(v=>v.toUpperCase().split('/'));
+          if(own?.name===canonical&&values.includes(target.slice(target.indexOf('-')+1))){response=candidate;request=canonicalUrl;}
+        }
+      }
+    }
+  }
   if(response.status===404)return {...base,status:'unmatched',message:'该来源未找到同名节点，不代表没有样本'};
   if(response.status!==200)throw Error(`来源访问失败（HTTP ${response.status}），未记为0条`);
   if(new URL(response.url).origin!==new URL(request).origin)throw Error('源站跳转到其他域名，未读取数据');

@@ -42,3 +42,8 @@
 135项自动测试通过；YFull和FTDNA两个指定支系已下载公开数据并测试解析。Edge本地模拟侧栏展示已检查，FTDNA正常公开网页已核对。未重新安装扩展验证用户浏览器权限及跨域请求全链路。
 
 可用`npx tsx scripts/samples-preview.ts`运行本地预览；其中TheYtree为明确标注的失败模拟。
+
+
+## 1.4.1 FTDNA节点名称核对
+
+依据源站公开脚本中的checkYdnaLink和checkHaplo流程，原文件403/404时读取 https://discover.familytreedna.com/HaplogroupSearch/O-F175 ，返回O-M175；再核对 https://discover.familytreedna.com/resources/classictree-y/O-M175.json 根节点SNP包含F175。只有这一双重证据成立才改用标准名。并非将403作为任意重试或跳过访问控制的理由。测试夹具ftdna-O-M175-root.json只保留真实根节点名称、variants、synonyms；空样本和children是测试裁剪，不代表源站无样本。
