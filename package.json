@@ -1,11 +1,11 @@
 {
   "name": "23mofang-county-map",
-  "version": "1.2.3",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "maps": "node scripts/collect-maps.mjs && node scripts/collect-cities.mjs",
+    "maps": "node scripts/collect-maps.mjs && node scripts/supplement-maps.mjs && node scripts/collect-cities.mjs",
     "fixtures": "node scripts/fixtures.mjs",
     "test": "tsx --test tests/*.test.ts",
     "check": "tsc --noEmit",

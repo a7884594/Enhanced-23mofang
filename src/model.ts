@@ -1,8 +1,9 @@
+import {prepareAtlas,supplementaryFeature,missingBoundaryReason} from './geography';
 export interface Region {code:string; name:string; percent:number|null; childItems:Region[]}
 export interface Selection {code:string; name?:string}
 export interface Snapshot {route:string; node:string; status:'ready'|'loading'|'empty'|'error'; items:Region[]; birthplace:Selection[][]; label:string; error?:string}
 export interface County {code:string; name:string; province:string; city:string; path:string[]; percent:number|null}
-export interface GeoFeature {type:'Feature'; properties:{code:string;name:string;level:string;path:string[];center?:number[]}; geometry:any}
+export interface GeoFeature {type:'Feature'; properties:{code:string;name:string;level:string;path:string[];center?:number[];group?:string;supplement?:string;source?:string;boundaryNote?:string}; geometry:any}
 export interface Atlas {type:'FeatureCollection'; features:GeoFeature[]; metadata?:{countyCount:number;createdAt:string;failures:unknown[]}}
 export interface Matched {record:County; feature:GeoFeature}
 export interface Unmatched {record:County; reason:string}
@@ -61,21 +62,26 @@ export function flattenCities(items:Region[],selections:Selection[][]=[]):County
   return result;
 }
 export function matchCounties(records:County[], atlas:Atlas,level:'district'|'city'='district') {
+  if(level==='district')atlas=prepareAtlas(records,atlas);
   const label=level==='city'?'市级地区':'区县';
-  const byCode=new Map(atlas.features.filter(f=>f.properties.level===level).map(f=>[f.properties.code,f]));
+  const features=atlas.features.filter(f=>f.properties.level===level);
+  const byCode=new Map(features.map(f=>[f.properties.code,f]));
   const counts=new Map<string,number>(); records.forEach(r=>counts.set(r.code,(counts.get(r.code)||0)+1));
   const matched:Matched[]=[]; const unmatched:Unmatched[]=[];
   for(const record of records) {
-    const feature=byCode.get(record.code);
+    const feature=level==='district'?(supplementaryFeature(record,features)||byCode.get(record.code)):byCode.get(record.code);
     let reason='';
     if(counts.get(record.code)!==1)reason=`重复${label}代码，无法确定唯一频率`;
     else if(level==='city'&&record.name.includes('直辖县级'))reason='省直辖县级汇总，不对应独立的地级市边界';
-    else if(!feature)reason=`地图缺少该${label}代码，可能涉及旧区划${level==='city'?'或非市级汇总':''}`;
+    else if(!feature)reason=(level==='district'&&missingBoundaryReason(record))||`地图缺少该${label}代码，可能涉及旧区划${level==='city'?'或非市级汇总':''}`;
+    else if(record.province&&feature.properties.path[0]!==record.province)reason='代码对应的省份不一致，不能确定边界';
     else if(feature.properties.name!==record.name)reason=`同代码地名不一致（地图：${feature.properties.name}），待核对边界`;
     else if(record.percent===null)reason='网站未提供有效频率';
     if(reason)unmatched.push({record,reason}); else matched.push({record,feature:feature!});
   }
-  return {matched,unmatched};
+  // Old/new codes or two code systems may point to one polygon. Never let the last value win.
+  const targets=new Map<string,number>();for(const m of matched)targets.set(m.feature.properties.code,(targets.get(m.feature.properties.code)||0)+1);
+  return {matched:matched.filter(m=>targets.get(m.feature.properties.code)===1),unmatched:[...unmatched,...matched.filter(m=>targets.get(m.feature.properties.code)!==1).map(m=>({record:m.record,reason:'多条网站数据对应同一边界，不能合并或覆盖频率'}))]};
 }
 export function percentText(value:number|null):string {
   if(value===null||!Number.isFinite(value))return '未提供';

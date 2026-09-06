@@ -16,8 +16,8 @@ test('every county is accounted for exactly once',()=>{
   assert.equal(matched.length+unmatched.length,records.length);
   assert.equal(new Set([...matched,...unmatched].map(r=>r.record)).size,records.length);
   assert.ok(matched.length>1000);
-  assert.ok(unmatched.some(r=>r.record.code==='130521'));
-  assert.ok(unmatched.some(r=>r.record.code==='130502'&&r.reason.includes('地名不一致')));
+  assert.ok(matched.some(r=>r.record.code==='130521'&&r.feature.properties.group==='130500'));
+  assert.ok(matched.some(r=>r.record.code==='130502'&&r.feature.properties.name==='桥东区'));
   assert.ok(matched.some(r=>r.record.code==='130433'));
 });
 test('districts under municipalities and directly administered counties survive flattening',()=>{

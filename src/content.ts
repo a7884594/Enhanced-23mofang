@@ -3,6 +3,7 @@ import {GeoComponent,TooltipComponent} from 'echarts/components';
 import {CanvasRenderer} from 'echarts/renderers';
 import {CHANNEL,copyRegions,copySelections,flatten,flattenCities,matchCounties,percentText,quantiles,colorFor,NO_DATA,routeNode,type Snapshot,type Atlas,type Matched,type GeoFeature} from './model';
 import {CSS} from './style';
+import {prepareAtlas} from './geography';
 import {findMapMount,insertMapHost} from './layout';
 echarts.use([GeoComponent,TooltipComponent,CanvasRenderer]);
 
@@ -76,14 +77,14 @@ function mount():boolean {
 }
 function search(){
   const needle=q<HTMLInputElement>('input').value.trim();const box=q('.results');box.replaceChildren();if(!needle||!atlas)return;
-  const values=new Map(matched.map(m=>[m.record.code,m.record]));
+  const values=new Map(matched.map(m=>[m.feature.properties.code,m.record]));
   const results=atlas.features.filter(f=>f.properties.level===(detail==='city'?'city':'district')&&f.properties.path.join('').includes(needle)).slice(0,40);
   for(const f of results){const b=document.createElement('button');const r=values.get(f.properties.code);b.textContent=`${f.properties.path.join(' / ')} · ${r?percentText(r.percent):'未提供 / 未匹配'}`;b.onclick=()=>{focus(f);box.replaceChildren();};box.append(b);}
   if(!results.length){const p=document.createElement('p');p.textContent=`没有匹配的${unit()}地区；旧区划请查看下方未匹配明细。`;box.append(p);}
 }
 function describe(code:string){
-  const value=matched.find(m=>m.record.code===code);
-  if(value)return `${value.record.path.join(' / ')}\n${snapshot?.node} · ${percentText(value.record.percent)}`;
+  const value=matched.find(m=>m.feature.properties.code===code);
+  if(value)return `${value.record.path.join(' / ')}\n${snapshot?.node} · ${percentText(value.record.percent)}${value.feature.properties.boundaryNote?'\n'+value.feature.properties.boundaryNote:''}`;
   const f=atlas?.features.find(f=>f.properties.code===code);
   return `${f?.properties.path.join(' / ')||'区域'}\n未提供${unit()}频率 / 未匹配`;
 }
@@ -121,9 +122,10 @@ async function render(){
   }
   text('.notice',`正在载入离线${name}地图…`);
   try{
-    const loaded=await loadAtlas(level);if(token!==generation||!host?.isConnected)return;atlas=loaded;
+    const loaded=await loadAtlas(level);if(token!==generation||!host?.isConnected)return;
     const extract=level==='city'?flattenCities:flatten;
     const geometryLevel=level==='city'?'city':'district';
+    atlas=level==='county'?prepareAtlas(extract(s.items),loaded):loaded;
     const records=extract(s.items,s.birthplace);const result=matchCounties(records,atlas,geometryLevel);matched=result.matched;
     // Keep the same nationwide thresholds when birthplace filters change.
     const scaleRecords=s.birthplace.length?matchCounties(extract(s.items),atlas,geometryLevel).matched:matched;
@@ -131,7 +133,7 @@ async function render(){
     echarts.registerMap(mapName,atlas as any);
     q('.notice').hidden=true;q('.map-wrap').hidden=false;
     chart=echarts.init(q('.map'),undefined,{renderer:'canvas',devicePixelRatio:Math.min(devicePixelRatio,2)});
-    const values=new Map(matched.map(m=>[m.record.code,m.record.percent!]));
+    const values=new Map(matched.map(m=>[m.feature.properties.code,m.record.percent!]));
     chart.setOption({animation:false,tooltip:{trigger:'item',renderMode:'richText',confine:true,formatter:(p:any)=>describe(p.name),backgroundColor:'#ffffff',borderColor:'#d6e3eb',textStyle:{color:'#244559',fontSize:12}},
       geo:{map:mapName,nameProperty:'code',roam:true,zoom:1,scaleLimit:{min:1,max:35},layoutCenter:['50%','50%'],layoutSize:'96%',silent:false,label:{show:false},tooltip:{show:true,formatter:(p:any)=>describe(p.name)},itemStyle:{areaColor:NO_DATA,borderColor:'#becdd7',borderWidth:.35},emphasis:{label:{show:false},itemStyle:{areaColor:'#f0c977',borderColor:'#9a7332',borderWidth:1}},selectedMode:false,
         regions:atlas.features.map(f=>{const v=values.get(f.properties.code);const color=v===undefined?NO_DATA:colorFor(v,bins);return {name:f.properties.code,itemStyle:{areaColor:color},emphasis:{itemStyle:{areaColor:color}}};})}
@@ -141,7 +143,7 @@ async function render(){
     const legend=q('.legend');legend.replaceChildren();
     const label=document.createElement('span');label.className='legend-label';label.textContent='低频（绿）→ 高频（红） · 全国分位数';legend.append(label);
     for(const bin of [...bins,{color:NO_DATA,label:'未提供 / 未匹配'}]){const key=document.createElement('span');key.className='key';const swatch=document.createElement('i');swatch.className='swatch';swatch.style.background=bin.color;key.append(swatch,document.createTextNode(bin.label));legend.append(key);}
-    text('.status',`已匹配 ${matched.length} / ${records.length} 条${name}数据 · 未匹配 ${result.unmatched.length} 条${s.label?' · 籍贯筛选：'+s.label:''}${atlas.metadata?.failures?.length?' · 部分地图边界下载失败':''}`);
+    text('.status',`已匹配 ${matched.length} / ${records.length} 条${name}数据 · 未匹配 ${result.unmatched.length} 条${matched.some(m=>m.feature.properties.group)?` · 其中 ${matched.filter(m=>m.feature.properties.group).length} 条使用旧版边界`:''}${s.label?' · 籍贯筛选：'+s.label:''}${atlas.metadata?.failures?.length?' · 部分地图边界下载失败':''}`);
     text('.sub',s.label?'当前显示所选籍贯范围，频率沿用网站原值':'全国视图 · 与当前支系数据同步');
     for(const u of result.unmatched){const tr=document.createElement('tr');for(const value of [u.record.path.join(' / '),percentText(u.record.percent),u.reason]){const td=document.createElement('td');td.textContent=value;tr.append(td);}q('tbody').append(tr);}
     text('summary',`${result.unmatched.length} 条${name}数据未能着色 · 查看明细`);

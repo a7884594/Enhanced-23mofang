@@ -28,6 +28,7 @@ for(const size of [48,128]) {
 const license=await readFile('node_modules/echarts/LICENSE','utf8');
 await writeFile('dist/THIRD-PARTY-NOTICES.txt',`ECharts and zrender: Apache License 2.0\n${license}\nMap boundaries: supplied by the public 23mofang mapData endpoint; retrieved for this local-use extension. See assets/map-provenance.json for provenance. No public redistribution or map ownership is claimed.\n`);
 console.log('Built unpacked extension: dist/');
+await appendFile('dist/THIRD-PARTY-NOTICES.txt','\nHistorical county boundaries: Alibaba DataV GeoAtlas areas/bound snapshots, retrieved 2026-09-06 for local visualization; source URLs and SHA-256 in assets/map-provenance.json. Boundary edition is selected by exact website county name and code, not claimed to be current.\nTaiwan county/city boundaries: NLSC 2025 (1140318), https://data.gov.tw/dataset/7442 ; GeoJSON conversion by https://geo.maderaojen.me/ (2026-08-07.1). Open Government Data License version 1.0: https://data.gov.tw/license . Simplified for this extension; county/city name crosswalk is scoped to Taiwan records, original frequencies unchanged.\n');
 // Include notices for all installed production dependencies in the local bundle.
 await mkdir('dist/licenses',{recursive:true});
 const lock=JSON.parse(await readFile('package-lock.json','utf8'));

@@ -11,6 +11,7 @@ bundle.mkdir(exist_ok=True)
 shutil.copytree(root / 'dist', bundle / 'extension', dirs_exist_ok=True)
 shutil.copy2(root / 'README.md', bundle / '安装与使用说明.md')
 shutil.copy2(root / 'VALIDATION.md', bundle / '验证记录.md')
+shutil.copy2(root / 'assets' / 'region-coverage.md', bundle / '行政区域补图核查.md')
 
 installer = release / f'23魔方区县地图-v{version}-安装包.zip'
 with zipfile.ZipFile(installer, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
@@ -40,7 +41,8 @@ with zipfile.ZipFile(installer) as z:
     for name in manifest['icons'].values():
         assert 'extension/' + name in z.namelist()
     atlas = json.loads(z.read('extension/assets/counties.geo.json'))
-    assert atlas['metadata']['countyCount'] == 2840
+    assert atlas['metadata']['countyCount'] == len([f for f in atlas['features'] if f['properties']['level'] == 'district' and not f['properties'].get('group')])
+    assert atlas['metadata']['historicalCount'] > 200
     assert not atlas['metadata']['failures']
     city_atlas = json.loads(z.read('extension/assets/cities.geo.json'))
     assert city_atlas['metadata']['cityCount'] == 367
