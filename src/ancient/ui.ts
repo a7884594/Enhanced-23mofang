@@ -24,11 +24,22 @@ export function bootAncientUI(){
   shadow.innerHTML=profileText(`<style>${STYLE}</style><aside class="panel" role="dialog" aria-label="古DNA查询" hidden><header class="head"><div class="top"><span class="tag">THEYTREE · ANCIENT DNA</span><button class="close">关闭</button></div><div class="title">古DNA</div><div class="mapping">来源：TheYtree</div><div class="tabs" role="tablist"><button data-scope="direct" role="tab">本节点</button><button data-scope="downstream" role="tab">包含下游</button></div></header><div class="filters"><input aria-label="搜索古DNA" placeholder="搜索编号、遗址、文化"><select aria-label="地区筛选"><option value="">全部地区</option></select><select aria-label="年代排序"><option value="source">源站顺序</option><option value="cal BP">cal BP：由早到晚</option><option value="BP">BP：由早到晚</option></select></div><div class="actions"><button class="refresh">刷新</button><button class="pause">暂停</button><button class="resume">继续查询</button><button class="sync">打开TheYtree同步</button></div><div class="body"><div class="empty">点击节点查询古DNA</div><div class="records"></div><details class="unknown"><summary></summary><div class="pending"></div></details><details class="snp-evidence"><summary>节点SNP对应依据</summary><div></div></details><details class="failures"><summary>查询问题</summary><div></div></details></div><footer class="foot"><div class="progress"></div><div class="time"></div><div class="caution">本节点指源站直接挂载，并非已排除所有下游。古样本不代表你的直接祖先；不同年代口径不混排。</div></footer></aside>`);
   document.body.append(host);
   const q=<T extends HTMLElement=HTMLElement>(s:string)=>shadow.querySelector<T>(s)!;
+  const nodeLink=document.createElement('a');nodeLink.className='node-link';nodeLink.target='_blank';nodeLink.rel='noopener noreferrer';nodeLink.textContent='TheYtree 对应节点（待确认）';nodeLink.setAttribute('aria-disabled','true');
+  nodeLink.style.cssText='display:inline-block;margin-top:8px;padding:4px 9px;border:1px solid #d8c9af;border-radius:6px;background:#fffdf9;font-size:12px;text-decoration:none;overflow-wrap:anywhere';
+  nodeLink.onclick=e=>{if(!nodeLink.hasAttribute('href'))e.preventDefault();};q('.mapping').after(nodeLink);
   const responsive=document.createElement('style');responsive.textContent=RESPONSIVE;shadow.append(responsive);
   const note=q('.caution');const noteText=RESEARCH?'只收录TheYtree明确标记为科研的样本，个人与古人样本排除。挂载和下游范围以TheYtree为准。':note.textContent;const notes=document.createElement('details');notes.className='caution';const noteTitle=document.createElement('summary');noteTitle.textContent='口径说明';const noteBody=document.createElement('p');noteBody.textContent=noteText;notes.append(noteTitle,noteBody);note.replaceWith(notes);
   if(RESEARCH){q<HTMLSelectElement>('select[aria-label="年代排序"]').hidden=true;q<HTMLInputElement>('input').placeholder='搜索编号、名称、来源';}
   let selected='';let scope:Scope='direct';let job:QueryResult|null=null;let serial=0;let busy=false;let lastState='';let priorFocus:Element|null=null;const counts=new Map<string,BadgeCount>();
   const set=(selector:string,value:string)=>{q(selector).textContent=value;};
+  function updateNodeLink(j?:QueryResult){
+    if(!j&&nodeLink.dataset.owner===selected)return;
+    const target=j&&j.status!=='unmatched'&&marker(j.target)&&(j.matchReused||j.nodeSnps?.length&&j.mappingReady||j.branches?.some(b=>b.marker===j.target&&!b.tentative))?j.target:null;
+    if(!target&&j?.status==='running'&&nodeLink.dataset.owner===selected&&nodeLink.dataset.target===j.target&&nodeLink.hasAttribute('href'))return;
+    nodeLink.dataset.owner=selected;nodeLink.setAttribute('aria-disabled',String(!target));nodeLink.tabIndex=target?0:-1;nodeLink.style.opacity=target?'1':'.6';
+    if(target){nodeLink.dataset.target=target;nodeLink.href=treeUrl(target);nodeLink.textContent=`TheYtree：${target} ↗`;nodeLink.title=`在新标签页打开对应节点 ${target}`;}
+    else{delete nodeLink.dataset.target;nodeLink.removeAttribute('href');nodeLink.textContent='TheYtree 对应节点（待确认）';nodeLink.title='确认节点对应后可跳转';}
+  }
   function link(parent:Element,label:string,url:string){const a=document.createElement('a');a.textContent=label;a.href=url;a.target='_blank';a.rel='noopener noreferrer';parent.append(a);}
   function card(s:AncientSample,pending=false){const e=document.createElement('article');e.className='card';
     const au=document.createElement('div');au.className='au';au.textContent=`${s.au} · ${pending?'待核对':profileText('已确认古人')}`;
@@ -44,7 +55,7 @@ export function bootAncientUI(){
     q('.records').replaceChildren(...rows.map(s=>card(s)));const pending=job.unknown.filter(filter);q('.pending').replaceChildren(...pending.map(s=>card(s,true)));q('.unknown').hidden=!pending.length;set('.unknown summary',`待核对 ${pending.length} 条（不计入已确认数量）`);
     q('.empty').hidden=!!rows.length||!!pending.length;q('.empty').textContent=job.complete?profileText('当前条件下没有古样本'):job.message;
   }
-  function update(j:QueryResult){if(j.status==='unmatched'&&!j.nodeSnps){void query(!!j.forceRefresh,true);return;}job=j;set('.title',profileText(`${selected} · 古DNA`));set('.mapping',`来源：TheYtree · ${j.mapping}${j.matchReused?' · 已复用节点对应':''}`);
+  function update(j:QueryResult){updateNodeLink(j);if(j.status==='unmatched'&&!j.nodeSnps){void query(!!j.forceRefresh,true);return;}job=j;set('.title',profileText(`${selected} · 古DNA`));set('.mapping',`来源：TheYtree · ${j.mapping}${j.matchReused?' · 已复用节点对应':''}`);
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
     q('.pause').hidden=!['running','sync'].includes(j.status);q('.resume').hidden=!['paused','partial','error'].includes(j.status);q('.sync').hidden=j.complete||j.status==='running';
     const regions=q<HTMLSelectElement>('select[aria-label="地区筛选"]');const previous=regions.value;regions.replaceChildren(new Option('全部地区',''),...[...new Set([...j.samples,...j.unknown].map(s=>s.country).filter(Boolean))].sort().map(r=>new Option(r,r)));regions.value=previous;
@@ -63,7 +74,7 @@ export function bootAncientUI(){
     if(j.complete)invalidateCounts();const count=knownDirectCount(j);if(count)counts.set(j.marker,count);updateBadges();renderRows();
   }
   async function query(refresh=false,useSnps=false){const token=++serial;busy=true;job=null;set('.title',profileText(`${selected} · 古DNA`));set('.progress','正在查询…');q('.records').replaceChildren();q('.pending').replaceChildren();q('.unknown').hidden=true;q('.failures').hidden=true;q('.empty').hidden=false;set('.empty',profileText('正在读取TheYtree公开古DNA信息…'));
-    set('.time','');set('.mapping','来源：TheYtree');q('.snp-evidence > div').replaceChildren();q('.snp-evidence').hidden=true;
+    updateNodeLink();set('.time','');set('.mapping','来源：TheYtree');q('.snp-evidence > div').replaceChildren();q('.snp-evidence').hidden=true;
     q('.resume').hidden=true;q('.sync').hidden=true;q('.pause').hidden=true;
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
     try{const name=selected,range=scope;const values=useSnps?await readSnps(name):undefined;if(token!==serial)return;const j=await api({type:profileText('anc.start'),marker:name,scope:range,refresh,snps:values});if(token===serial)update(j);else void api({type:profileText('anc.cancel'),id:j.id}).catch(()=>{});}catch(e){if(token===serial){set('.empty',String(e));set('.progress',profileText('查询失败，不代表没有古样本'));}}finally{if(token===serial)busy=false;}
