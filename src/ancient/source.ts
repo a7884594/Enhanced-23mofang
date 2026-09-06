@@ -1,4 +1,5 @@
 import {A_CHANNEL,TY,sourceMarker,queryUrl,nodeUrl,normalizeTree,sourceUrl,type TreePage,type QueryResult} from './model';
+import {snpUrl} from './snps';
 import {parseDetail,parseTreeDOM} from './parser';
 async function send(message:any){const r=await chrome.runtime.sendMessage(message);if(!r?.ok)throw Error(r?.error||'扩展通信失败');return r.value;}
 let rendered:TreePage|null=null;let running=false;let text:HTMLElement|null=null;
@@ -20,7 +21,17 @@ async function synchronize(force=false){
     text!.textContent='正在读取当前TheYtree树…';
     window.postMessage({channel:A_CHANNEL,type:'read-source'},location.origin);
     await new Promise(r=>setTimeout(r,350));
-    let page=rendered;
+    if(job.nodeSnps&&!job.mappingReady){
+      for(const value of job.nodeSnps){
+        if(job.snpChecks?.some(v=>v.snp===value))continue;
+        const state=await send({type:'anc.sourceContext'});if(state?.status==='paused')return;
+        const p=normalizeTree(JSON.parse(await fetchPage(snpUrl(value))));if(!p.valid)throw Error(p.reason);
+        job=await send({type:'anc.sourceSnp',snp:value,page:p});
+        text!.textContent=`SNP核对 ${job.snpChecks?.length} / ${job.nodeSnps!.length}`;
+      }
+      if(!job.mappingReady)throw Error(job.message);
+    }
+    let page=sourceMarker(location.pathname)===job.target?rendered:null;
     if(!page?.valid){try{page=normalizeTree(JSON.parse(await fetchPage(queryUrl(job.target))));}catch{page=parseTreeDOM(document);}}
     if(!page?.valid)throw Error('树尚未加载，请稍后点击同步');
     job=await send({type:'anc.source',page});

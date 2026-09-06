@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "23魔方 · 地域地图与古DNA",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "全国区县/市级频率地图，节点古DNA查询、TheYtree来源核对与本地缓存。",
   "permissions": ["storage"],
   "host_permissions": ["https://www.theytree.com/*"],
@@ -9,7 +9,7 @@
   "minimum_chrome_version": "111",
   "icons": {"48":"icons/48.png","128":"icons/128.png"},
   "content_scripts": [
-    {"matches":["https://www.23mofang.com/*"],"js":["bridge.js"],"run_at":"document_start","world":"MAIN"},
+    {"matches":["https://www.23mofang.com/*"],"js":["bridge.js","ancient/mofang-bridge.js"],"run_at":"document_start","world":"MAIN"},
     {"matches":["https://www.23mofang.com/*"],"js":["content.js","ancient/ui.js"],"run_at":"document_start"},
     {"matches":["https://www.theytree.com/tree/*"],"js":["ancient/source-bridge.js"],"run_at":"document_start","world":"MAIN"},
     {"matches":["https://www.theytree.com/tree/*"],"js":["ancient/source.js"],"run_at":"document_idle"}

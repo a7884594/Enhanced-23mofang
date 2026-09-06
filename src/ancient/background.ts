@@ -7,7 +7,7 @@ async function get(key:string):Promise<any>{return (await chrome.storage.local.g
 const starts=new Map<number,Promise<any>>();
 async function startForTab(tab:number,message:any){
   const previous=starts.get(tab)||Promise.resolve();
-  const work=previous.catch(()=>{}).then(async()=>{const old=await get(ownerKey(tab));if(old)await engine.pause(old);const j=await engine.start(message.marker,message.scope==='downstream'?'downstream':'direct',!!message.refresh);await chrome.storage.local.set({[ownerKey(tab)]:j.id});return j;});
+  const work=previous.catch(()=>{}).then(async()=>{const old=await get(ownerKey(tab));if(old)await engine.pause(old);const j=await engine.start(message.marker,message.scope==='downstream'?'downstream':'direct',!!message.refresh,message.snps);await chrome.storage.local.set({[ownerKey(tab)]:j.id});return j;});
   starts.set(tab,work);try{return await work;}finally{if(starts.get(tab)===work)starts.delete(tab);}
 }
 async function owned(id:unknown,sender:chrome.runtime.MessageSender){if(typeof id!=='string'||!sender.tab?.id||await get(ownerKey(sender.tab.id))!==id)throw Error('此页面没有该查询任务');return id;}
@@ -43,6 +43,7 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
         await engine.pause(id);const waiting=await engine.get(id);if(!waiting)throw Error('任务不存在');waiting.status='sync';waiting.complete=false;waiting.message='等待正常源站网页同步';await engine.save(waiting);
         // Explicit button action opens a normal, visible source page. No bypass,
         // hidden authentication or background tab farming.
+        await chrome.storage.local.set({[`anc.syncTarget.${id}`]:j.target});
         const opened=await chrome.tabs.create({url:treeUrl(j.target),active:true});
         if(opened.id==null)throw Error('无法打开源站页面');
         await chrome.storage.local.set({[`anc.sync.${opened.id}`]:id});return {opened:true};
@@ -50,8 +51,10 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
     }
     if(origin===TY&&tab!=null){
       const id=await get(`anc.sync.${tab}`);if(message.type==='anc.sourceContext')return id?engine.get(id):null;if(!id)throw Error('这个源站页面没有待同步任务');
-      const j=await engine.get(id);if(!j||sourceMarker(new URL(sender.url!).pathname)!==j.target)throw Error('源站支系与查询不一致');
+      const j=await engine.get(id);if(!j||sourceMarker(new URL(sender.url!).pathname)!==(await get(`anc.syncTarget.${id}`)||j.target))throw Error('源站支系与查询不一致');
+      if(message.type==='anc.sourceSnp')return engine.sourceSnp(id,safeText(message.snp,100),cleanPage(message.page));
       if(message.type==='anc.source'){
+        if(j.nodeSnps&&!j.mappingReady)throw Error('请先完成节点全部SNP核对');
         const p=cleanPage(message.page);if(!p.valid||!p.branches.some(b=>b.marker===j.target))throw Error('尚未读取到对应树节点');
         return engine.adopt(id,p);
       }

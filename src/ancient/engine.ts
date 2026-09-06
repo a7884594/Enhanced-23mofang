@@ -1,10 +1,11 @@
 import {TY,TTL,marker,sourceUrl,queryUrl,nodeUrl,normalizeTree,selectSamples,pathToRoot,dedupe,fresh,type QueryResult,type TreePage,type AncientSample} from './model';
 import {parseDetail} from './parser';
+import {snps,checkSnp,snpUrl,mappingTarget} from './snps';
 import {resolveTarget} from './aliases';
 export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Promise<void>;request(url:string,signal:AbortSignal):Promise<{status:number;url:string;body:string}>;now():number;id():string}
 export class SyncRequired extends Error{}
 export const jobKey=(id:string)=>`anc.job.${id}`;
-export const cacheKey=(m:string,s:string)=>`anc.cache.${m}.${s}`;
+export const cacheKey=(m:string,s:string)=>`anc.cache.snp2.${m}.${s}`;
 /** Per-worker global request queue: single concurrency and >=500ms between starts. */
 export class RequestGate {
   private tail:Promise<any>=Promise.resolve();private next=0;
@@ -25,19 +26,19 @@ export class AncientEngine {
   constructor(private io:IO){}
   async save(job:QueryResult){job.updatedAt=this.io.now();await this.io.set(jobKey(job.id),job);if(!job.complete&&job.status!=='unmatched')await this.io.set(`anc.pending.${job.marker}.${job.scope}`,job.id);}
   async get(id:string):Promise<QueryResult|null>{const j=await this.io.get(jobKey(id));if(j?.status==='running'&&!this.active.has(id)){j.status='paused';j.message='后台任务已暂停，可继续查询';await this.save(j);}return j||null;}
-  async start(name:string,scope:'direct'|'downstream',refresh=false):Promise<QueryResult>{
-    const m=marker(name);if(!m)throw Error('无效支系标记');
-    if(!refresh){const cached=await this.io.get(cacheKey(m,scope));if(cached&&fresh(cached,this.io.now())){const copy={...cached,id:this.io.id(),cached:true};await this.io.set(jobKey(copy.id),copy);return copy;}}
+  async start(name:string,scope:'direct'|'downstream',refresh=false,values?:unknown):Promise<QueryResult>{
+    const m=marker(name);if(!m)throw Error('无效支系标记');const nodeSnps=values===undefined?undefined:snps(values);if(nodeSnps&&!nodeSnps.length)throw Error('尚未读取到节点SNP列表，请等待树加载后重试');
+    if(!refresh){const cached=await this.io.get(cacheKey(m,scope));if(cached&&fresh(cached,this.io.now())&&JSON.stringify(cached.nodeSnps)===JSON.stringify(nodeSnps)){const copy={...cached,id:this.io.id(),cached:true};await this.io.set(jobKey(copy.id),copy);return copy;}}
     const resolved=resolveTarget(m);
     if(!refresh){
       const pendingId=await this.io.get(`anc.pending.${m}.${scope}`);const pending=pendingId?await this.io.get(jobKey(pendingId)):null;
-      if(pending&&!pending.complete&&pending.status!=='unmatched'&&pending.target===resolved.target&&this.io.now()-pending.createdAt<TTL&&!this.active.has(pending.id)){
+      if(pending&&!pending.complete&&pending.status!=='unmatched'&&JSON.stringify(pending.nodeSnps)===JSON.stringify(nodeSnps)&&this.io.now()-pending.createdAt<TTL&&!this.active.has(pending.id)){
         // Give the reopened page its own task ID; a tab restored after browser
         // restart must not need the previous tab ID to find its checkpoint.
         const recovered:QueryResult={...pending,id:this.io.id(),status:'paused',syncToken:'',cached:false,message:'找到未完成的查询，点击“继续查询”恢复，或打开TheYtree同步'};await this.save(recovered);return recovered;
       }
     }
-    const job:QueryResult={id:this.io.id(),marker:m,...resolved,scope,status:'running',createdAt:this.io.now(),updatedAt:this.io.now(),cached:false,forceRefresh:refresh,complete:false,samples:[],unknown:[],branches:[],checked:[],queue:[],details:[],failures:[],excluded:0,message:'正在读取TheYtree公开树'};
+    const job:QueryResult={id:this.io.id(),marker:m,...resolved,nodeSnps,snpChecks:[],mappingReady:!nodeSnps,scope,status:'running',createdAt:this.io.now(),updatedAt:this.io.now(),cached:false,forceRefresh:refresh,complete:false,samples:[],unknown:[],branches:[],checked:[],queue:[],details:[],failures:[],excluded:0,message:'正在读取TheYtree公开树'};
     await this.save(job);void this.run(job.id);return job;
   }
   async pause(id:string){this.active.get(id)?.abort();this.active.delete(id);const j=await this.io.get(jobKey(id));if(j&&j.status!=='complete'){j.status='paused';j.syncToken='';j.message='查询已暂停，已取得的结果保留';await this.save(j);}return j;}
@@ -58,8 +59,28 @@ export class AncientEngine {
     j.details=[...j.samples,...j.unknown].filter(s=>!s.detail).map(s=>s.au);
     j.excluded=Math.max(j.excluded,page.excluded);
   }
+  private resolveMapping(j:QueryResult){
+    const checks=j.snpChecks||[];const target=mappingTarget(checks);
+    if(!target||checks.some(v=>v.issue)){
+      j.status=checks.some(v=>v.target||v.issue)?'partial':'unmatched';j.complete=false;
+      j.message=checks.some(v=>v.target||v.issue)?'SNP对应存在分歧或缺少交叉依据，未自动合并样本':'节点全部SNP均未找到可核实对应';
+      j.mapping='完整SNP核对尚未建立唯一对应';return false;
+    }
+    j.target=target;j.mappingReady=true;
+    j.mapping=`${j.marker} → ${target} · 节点SNP交叉对应，挂载关系以TheYtree为准`;
+    return true;
+  }
+  async sourceSnp(id:string,value:string,page:TreePage){
+    const j:QueryResult=await this.io.get(jobKey(id));
+    if(!j||j.status==='paused'||!j.nodeSnps?.includes(value)||j.mappingReady)throw Error('SNP同步任务已过期');
+    j.snpChecks=[...(j.snpChecks||[]).filter(v=>v.snp!==value),checkSnp(page,value,j.nodeSnps)];
+    if(j.nodeSnps.every(s=>j.snpChecks!.some(v=>v.snp===s)))this.resolveMapping(j);
+    j.message=j.mappingReady?'SNP对应已确认，正在读取古DNA':j.message;
+    await this.save(j);return j;
+  }
   async adopt(id:string,page:TreePage){
     await this.pause(id);const j=await this.io.get(jobKey(id));if(!j)throw Error('任务不存在');
+    if(j.nodeSnps&&!j.mappingReady)throw Error('节点SNP尚未建立唯一对应');
     // DOM and API node IDs must not be mixed. A normal page sync is a new tree
     // snapshot, while already fetched ancient detail fields remain cacheable.
     j.branches=[];j.checked=[];j.samples=[];j.unknown=[];j.failures=[];j.syncToken=this.io.id();
@@ -92,6 +113,26 @@ export class AncientEngine {
     let j:QueryResult=await this.io.get(jobKey(id));if(!j){this.active.delete(id);return;}
     try{
       j.status='running';
+      if(j.nodeSnps&&!j.mappingReady){
+        for(const value of j.nodeSnps){
+          if(j.snpChecks?.some(v=>v.snp===value))continue;
+          const key=`anc.snp2.${j.nodeSnps.join(',')}.${value}`;
+          const cached=await this.io.get(key);
+          let check;
+          if(!j.forceRefresh&&cached&&this.io.now()-cached.at<TTL)check=cached.check;
+          else {
+            const page=normalizeTree(JSON.parse(await this.request(snpUrl(value),c)));
+            if(!page.valid)throw new SyncRequired(page.reason);
+            check=checkSnp(page,value,j.nodeSnps);
+            if(!check.issue)await this.io.set(key,{at:this.io.now(),check});
+          }
+          if(c.signal.aborted)return;
+          (j.snpChecks??=[]).push(check);
+          j.message=`正在核对节点SNP：${j.snpChecks.length} / ${j.nodeSnps.length}`;
+          if(c.signal.aborted)return;await this.save(j);
+        }
+        if(!this.resolveMapping(j)){await this.save(j);return;}
+      }
       if(!j.branches.length){
         const body=await this.request(queryUrl(j.target),c);let raw:any;try{raw=JSON.parse(body);}catch{throw new SyncRequired('公开树需要正常网页加载，请打开TheYtree同步');}
         const page=normalizeTree(raw);if(!page.valid)throw new SyncRequired(page.reason);this.integrate(j,page);if(c.signal.aborted)return;await this.save(j);if((j as QueryResult).status==='unmatched')return;

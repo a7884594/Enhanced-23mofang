@@ -1,0 +1,2070 @@
+[
+  {
+    "branches": [
+      {
+        "hid": 21717,
+        "parent": 21402,
+        "name": "O-BY220310",
+        "isParent": 1
+      },
+      {
+        "hid": 21718,
+        "parent": 21717,
+        "name": "O-Y60765",
+        "isParent": 1
+      },
+      {
+        "hid": 21723,
+        "parent": 21718,
+        "name": "O-TYT29221",
+        "isParent": 1
+      },
+      {
+        "hid": 21725,
+        "parent": 21723,
+        "name": "O-TYT228596",
+        "isParent": 1
+      },
+      {
+        "hid": 21726,
+        "parent": 21723,
+        "name": "O-TYT32374",
+        "isParent": 0
+      },
+      {
+        "hid": 35726,
+        "parent": 21723,
+        "name": "O-MF278656",
+        "isParent": 1
+      },
+      {
+        "hid": 44485,
+        "parent": 21723,
+        "name": "O-MF501812",
+        "isParent": 1
+      },
+      {
+        "hid": 21719,
+        "parent": 21718,
+        "name": "O-TYT83569",
+        "isParent": 1
+      },
+      {
+        "hid": 35724,
+        "parent": 21719,
+        "name": "O-MF287302",
+        "isParent": 1
+      },
+      {
+        "hid": 31510,
+        "parent": 35724,
+        "name": "O-MF288090",
+        "isParent": 1
+      },
+      {
+        "hid": 44715,
+        "parent": 35724,
+        "name": "O-MF346558",
+        "isParent": 1
+      },
+      {
+        "hid": 44716,
+        "parent": 44715,
+        "name": "O-MF391637",
+        "isParent": 1
+      },
+      {
+        "hid": 44717,
+        "parent": 44715,
+        "name": "O-MF475026",
+        "isParent": 1
+      },
+      {
+        "hid": 35725,
+        "parent": 44715,
+        "name": "O-MF346543",
+        "isParent": 1
+      },
+      {
+        "hid": 21727,
+        "parent": 21717,
+        "name": "O-Y149564",
+        "isParent": 1
+      },
+      {
+        "hid": 21728,
+        "parent": 21727,
+        "name": "O-TYT42012",
+        "isParent": 1
+      },
+      {
+        "hid": 26788,
+        "parent": 21728,
+        "name": "O-FT39702",
+        "isParent": 1
+      },
+      {
+        "hid": 21730,
+        "parent": 26788,
+        "name": "O-TYT196609",
+        "isParent": 1
+      },
+      {
+        "hid": 21729,
+        "parent": 26788,
+        "name": "O-Y25438",
+        "isParent": 1
+      },
+      {
+        "hid": 26956,
+        "parent": 21729,
+        "name": "O-TYT322988",
+        "isParent": 1
+      },
+      {
+        "hid": 21731,
+        "parent": 21727,
+        "name": "O-TYT202120",
+        "isParent": 1
+      },
+      {
+        "hid": 21733,
+        "parent": 21731,
+        "name": "O-TYT197996",
+        "isParent": 1
+      },
+      {
+        "hid": 44738,
+        "parent": 21733,
+        "name": " O-MF5383",
+        "isParent": 1
+      },
+      {
+        "hid": 21732,
+        "parent": 21731,
+        "name": "O-BY49060",
+        "isParent": 1
+      },
+      {
+        "hid": 44739,
+        "parent": 21732,
+        "name": "O-MF475043",
+        "isParent": 1
+      },
+      {
+        "hid": 27152,
+        "parent": 21732,
+        "name": "O-MF197045",
+        "isParent": 1
+      },
+      {
+        "hid": 26918,
+        "parent": 27152,
+        "name": "O-TYT245397",
+        "isParent": 1
+      },
+      {
+        "hid": 44740,
+        "parent": 27152,
+        "name": "O-MF498141",
+        "isParent": 1
+      }
+    ],
+    "snp": "MF9915",
+    "ancient": [
+      {
+        "sid": 75605,
+        "parent": 21717,
+        "name": "XM123 HRR1444584 河南省渑池县天池镇鹿寺村鹿寺西遗址 西周 2790±30 cal BP",
+        "haplogroup": "O-BY220310",
+        "stype": 2,
+        "sid_encrypted": "6d7a0fb3911021aaadd9d3d7615fe4b0",
+        "period": "西周"
+      }
+    ]
+  },
+  {
+    "branches": [
+      {
+        "hid": 21717,
+        "parent": 21402,
+        "name": "O-BY220310",
+        "isParent": 1
+      },
+      {
+        "hid": 21718,
+        "parent": 21717,
+        "name": "O-Y60765",
+        "isParent": 1
+      },
+      {
+        "hid": 21723,
+        "parent": 21718,
+        "name": "O-TYT29221",
+        "isParent": 1
+      },
+      {
+        "hid": 21725,
+        "parent": 21723,
+        "name": "O-TYT228596",
+        "isParent": 1
+      },
+      {
+        "hid": 21726,
+        "parent": 21723,
+        "name": "O-TYT32374",
+        "isParent": 0
+      },
+      {
+        "hid": 35726,
+        "parent": 21723,
+        "name": "O-MF278656",
+        "isParent": 1
+      },
+      {
+        "hid": 44485,
+        "parent": 21723,
+        "name": "O-MF501812",
+        "isParent": 1
+      },
+      {
+        "hid": 21719,
+        "parent": 21718,
+        "name": "O-TYT83569",
+        "isParent": 1
+      },
+      {
+        "hid": 35724,
+        "parent": 21719,
+        "name": "O-MF287302",
+        "isParent": 1
+      },
+      {
+        "hid": 31510,
+        "parent": 35724,
+        "name": "O-MF288090",
+        "isParent": 1
+      },
+      {
+        "hid": 44715,
+        "parent": 35724,
+        "name": "O-MF346558",
+        "isParent": 1
+      },
+      {
+        "hid": 44716,
+        "parent": 44715,
+        "name": "O-MF391637",
+        "isParent": 1
+      },
+      {
+        "hid": 44717,
+        "parent": 44715,
+        "name": "O-MF475026",
+        "isParent": 1
+      },
+      {
+        "hid": 35725,
+        "parent": 44715,
+        "name": "O-MF346543",
+        "isParent": 1
+      },
+      {
+        "hid": 21727,
+        "parent": 21717,
+        "name": "O-Y149564",
+        "isParent": 1
+      },
+      {
+        "hid": 21728,
+        "parent": 21727,
+        "name": "O-TYT42012",
+        "isParent": 1
+      },
+      {
+        "hid": 26788,
+        "parent": 21728,
+        "name": "O-FT39702",
+        "isParent": 1
+      },
+      {
+        "hid": 21730,
+        "parent": 26788,
+        "name": "O-TYT196609",
+        "isParent": 1
+      },
+      {
+        "hid": 21729,
+        "parent": 26788,
+        "name": "O-Y25438",
+        "isParent": 1
+      },
+      {
+        "hid": 26956,
+        "parent": 21729,
+        "name": "O-TYT322988",
+        "isParent": 1
+      },
+      {
+        "hid": 21731,
+        "parent": 21727,
+        "name": "O-TYT202120",
+        "isParent": 1
+      },
+      {
+        "hid": 21733,
+        "parent": 21731,
+        "name": "O-TYT197996",
+        "isParent": 1
+      },
+      {
+        "hid": 44738,
+        "parent": 21733,
+        "name": " O-MF5383",
+        "isParent": 1
+      },
+      {
+        "hid": 21732,
+        "parent": 21731,
+        "name": "O-BY49060",
+        "isParent": 1
+      },
+      {
+        "hid": 44739,
+        "parent": 21732,
+        "name": "O-MF475043",
+        "isParent": 1
+      },
+      {
+        "hid": 27152,
+        "parent": 21732,
+        "name": "O-MF197045",
+        "isParent": 1
+      },
+      {
+        "hid": 26918,
+        "parent": 27152,
+        "name": "O-TYT245397",
+        "isParent": 1
+      },
+      {
+        "hid": 44740,
+        "parent": 27152,
+        "name": "O-MF498141",
+        "isParent": 1
+      }
+    ],
+    "snp": "MF9950",
+    "ancient": [
+      {
+        "sid": 75605,
+        "parent": 21717,
+        "name": "XM123 HRR1444584 河南省渑池县天池镇鹿寺村鹿寺西遗址 西周 2790±30 cal BP",
+        "haplogroup": "O-BY220310",
+        "stype": 2,
+        "sid_encrypted": "6d7a0fb3911021aaadd9d3d7615fe4b0",
+        "period": "西周"
+      }
+    ]
+  },
+  {
+    "branches": [
+      {
+        "hid": 21717,
+        "parent": 21402,
+        "name": "O-BY220310",
+        "isParent": 1
+      },
+      {
+        "hid": 21718,
+        "parent": 21717,
+        "name": "O-Y60765",
+        "isParent": 1
+      },
+      {
+        "hid": 21723,
+        "parent": 21718,
+        "name": "O-TYT29221",
+        "isParent": 1
+      },
+      {
+        "hid": 21725,
+        "parent": 21723,
+        "name": "O-TYT228596",
+        "isParent": 1
+      },
+      {
+        "hid": 21726,
+        "parent": 21723,
+        "name": "O-TYT32374",
+        "isParent": 0
+      },
+      {
+        "hid": 35726,
+        "parent": 21723,
+        "name": "O-MF278656",
+        "isParent": 1
+      },
+      {
+        "hid": 44485,
+        "parent": 21723,
+        "name": "O-MF501812",
+        "isParent": 1
+      },
+      {
+        "hid": 21719,
+        "parent": 21718,
+        "name": "O-TYT83569",
+        "isParent": 1
+      },
+      {
+        "hid": 35724,
+        "parent": 21719,
+        "name": "O-MF287302",
+        "isParent": 1
+      },
+      {
+        "hid": 31510,
+        "parent": 35724,
+        "name": "O-MF288090",
+        "isParent": 1
+      },
+      {
+        "hid": 44715,
+        "parent": 35724,
+        "name": "O-MF346558",
+        "isParent": 1
+      },
+      {
+        "hid": 44716,
+        "parent": 44715,
+        "name": "O-MF391637",
+        "isParent": 1
+      },
+      {
+        "hid": 44717,
+        "parent": 44715,
+        "name": "O-MF475026",
+        "isParent": 1
+      },
+      {
+        "hid": 35725,
+        "parent": 44715,
+        "name": "O-MF346543",
+        "isParent": 1
+      },
+      {
+        "hid": 21727,
+        "parent": 21717,
+        "name": "O-Y149564",
+        "isParent": 1
+      },
+      {
+        "hid": 21728,
+        "parent": 21727,
+        "name": "O-TYT42012",
+        "isParent": 1
+      },
+      {
+        "hid": 26788,
+        "parent": 21728,
+        "name": "O-FT39702",
+        "isParent": 1
+      },
+      {
+        "hid": 21730,
+        "parent": 26788,
+        "name": "O-TYT196609",
+        "isParent": 1
+      },
+      {
+        "hid": 21729,
+        "parent": 26788,
+        "name": "O-Y25438",
+        "isParent": 1
+      },
+      {
+        "hid": 26956,
+        "parent": 21729,
+        "name": "O-TYT322988",
+        "isParent": 1
+      },
+      {
+        "hid": 21731,
+        "parent": 21727,
+        "name": "O-TYT202120",
+        "isParent": 1
+      },
+      {
+        "hid": 21733,
+        "parent": 21731,
+        "name": "O-TYT197996",
+        "isParent": 1
+      },
+      {
+        "hid": 44738,
+        "parent": 21733,
+        "name": " O-MF5383",
+        "isParent": 1
+      },
+      {
+        "hid": 21732,
+        "parent": 21731,
+        "name": "O-BY49060",
+        "isParent": 1
+      },
+      {
+        "hid": 44739,
+        "parent": 21732,
+        "name": "O-MF475043",
+        "isParent": 1
+      },
+      {
+        "hid": 27152,
+        "parent": 21732,
+        "name": "O-MF197045",
+        "isParent": 1
+      },
+      {
+        "hid": 26918,
+        "parent": 27152,
+        "name": "O-TYT245397",
+        "isParent": 1
+      },
+      {
+        "hid": 44740,
+        "parent": 27152,
+        "name": "O-MF498141",
+        "isParent": 1
+      }
+    ],
+    "snp": "MF9970",
+    "ancient": [
+      {
+        "sid": 75605,
+        "parent": 21717,
+        "name": "XM123 HRR1444584 河南省渑池县天池镇鹿寺村鹿寺西遗址 西周 2790±30 cal BP",
+        "haplogroup": "O-BY220310",
+        "stype": 2,
+        "sid_encrypted": "6d7a0fb3911021aaadd9d3d7615fe4b0",
+        "period": "西周"
+      }
+    ]
+  },
+  {
+    "branches": [
+      {
+        "hid": 21717,
+        "parent": 21402,
+        "name": "O-BY220310",
+        "isParent": 1
+      },
+      {
+        "hid": 21718,
+        "parent": 21717,
+        "name": "O-Y60765",
+        "isParent": 1
+      },
+      {
+        "hid": 21723,
+        "parent": 21718,
+        "name": "O-TYT29221",
+        "isParent": 1
+      },
+      {
+        "hid": 21725,
+        "parent": 21723,
+        "name": "O-TYT228596",
+        "isParent": 1
+      },
+      {
+        "hid": 21726,
+        "parent": 21723,
+        "name": "O-TYT32374",
+        "isParent": 0
+      },
+      {
+        "hid": 35726,
+        "parent": 21723,
+        "name": "O-MF278656",
+        "isParent": 1
+      },
+      {
+        "hid": 44485,
+        "parent": 21723,
+        "name": "O-MF501812",
+        "isParent": 1
+      },
+      {
+        "hid": 21719,
+        "parent": 21718,
+        "name": "O-TYT83569",
+        "isParent": 1
+      },
+      {
+        "hid": 35724,
+        "parent": 21719,
+        "name": "O-MF287302",
+        "isParent": 1
+      },
+      {
+        "hid": 31510,
+        "parent": 35724,
+        "name": "O-MF288090",
+        "isParent": 1
+      },
+      {
+        "hid": 44715,
+        "parent": 35724,
+        "name": "O-MF346558",
+        "isParent": 1
+      },
+      {
+        "hid": 44716,
+        "parent": 44715,
+        "name": "O-MF391637",
+        "isParent": 1
+      },
+      {
+        "hid": 44717,
+        "parent": 44715,
+        "name": "O-MF475026",
+        "isParent": 1
+      },
+      {
+        "hid": 35725,
+        "parent": 44715,
+        "name": "O-MF346543",
+        "isParent": 1
+      },
+      {
+        "hid": 21727,
+        "parent": 21717,
+        "name": "O-Y149564",
+        "isParent": 1
+      },
+      {
+        "hid": 21728,
+        "parent": 21727,
+        "name": "O-TYT42012",
+        "isParent": 1
+      },
+      {
+        "hid": 26788,
+        "parent": 21728,
+        "name": "O-FT39702",
+        "isParent": 1
+      },
+      {
+        "hid": 21730,
+        "parent": 26788,
+        "name": "O-TYT196609",
+        "isParent": 1
+      },
+      {
+        "hid": 21729,
+        "parent": 26788,
+        "name": "O-Y25438",
+        "isParent": 1
+      },
+      {
+        "hid": 26956,
+        "parent": 21729,
+        "name": "O-TYT322988",
+        "isParent": 1
+      },
+      {
+        "hid": 21731,
+        "parent": 21727,
+        "name": "O-TYT202120",
+        "isParent": 1
+      },
+      {
+        "hid": 21733,
+        "parent": 21731,
+        "name": "O-TYT197996",
+        "isParent": 1
+      },
+      {
+        "hid": 44738,
+        "parent": 21733,
+        "name": " O-MF5383",
+        "isParent": 1
+      },
+      {
+        "hid": 21732,
+        "parent": 21731,
+        "name": "O-BY49060",
+        "isParent": 1
+      },
+      {
+        "hid": 44739,
+        "parent": 21732,
+        "name": "O-MF475043",
+        "isParent": 1
+      },
+      {
+        "hid": 27152,
+        "parent": 21732,
+        "name": "O-MF197045",
+        "isParent": 1
+      },
+      {
+        "hid": 26918,
+        "parent": 27152,
+        "name": "O-TYT245397",
+        "isParent": 1
+      },
+      {
+        "hid": 44740,
+        "parent": 27152,
+        "name": "O-MF498141",
+        "isParent": 1
+      }
+    ],
+    "snp": "BY220310",
+    "ancient": [
+      {
+        "sid": 75605,
+        "parent": 21717,
+        "name": "XM123 HRR1444584 河南省渑池县天池镇鹿寺村鹿寺西遗址 西周 2790±30 cal BP",
+        "haplogroup": "O-BY220310",
+        "stype": 2,
+        "sid_encrypted": "6d7a0fb3911021aaadd9d3d7615fe4b0",
+        "period": "西周"
+      }
+    ]
+  },
+  {
+    "branches": [
+      {
+        "hid": 21717,
+        "parent": 21402,
+        "name": "O-BY220310",
+        "isParent": 1
+      },
+      {
+        "hid": 21718,
+        "parent": 21717,
+        "name": "O-Y60765",
+        "isParent": 1
+      },
+      {
+        "hid": 21723,
+        "parent": 21718,
+        "name": "O-TYT29221",
+        "isParent": 1
+      },
+      {
+        "hid": 21725,
+        "parent": 21723,
+        "name": "O-TYT228596",
+        "isParent": 1
+      },
+      {
+        "hid": 21726,
+        "parent": 21723,
+        "name": "O-TYT32374",
+        "isParent": 0
+      },
+      {
+        "hid": 35726,
+        "parent": 21723,
+        "name": "O-MF278656",
+        "isParent": 1
+      },
+      {
+        "hid": 44485,
+        "parent": 21723,
+        "name": "O-MF501812",
+        "isParent": 1
+      },
+      {
+        "hid": 21719,
+        "parent": 21718,
+        "name": "O-TYT83569",
+        "isParent": 1
+      },
+      {
+        "hid": 35724,
+        "parent": 21719,
+        "name": "O-MF287302",
+        "isParent": 1
+      },
+      {
+        "hid": 31510,
+        "parent": 35724,
+        "name": "O-MF288090",
+        "isParent": 1
+      },
+      {
+        "hid": 44715,
+        "parent": 35724,
+        "name": "O-MF346558",
+        "isParent": 1
+      },
+      {
+        "hid": 44716,
+        "parent": 44715,
+        "name": "O-MF391637",
+        "isParent": 1
+      },
+      {
+        "hid": 44717,
+        "parent": 44715,
+        "name": "O-MF475026",
+        "isParent": 1
+      },
+      {
+        "hid": 35725,
+        "parent": 44715,
+        "name": "O-MF346543",
+        "isParent": 1
+      },
+      {
+        "hid": 21727,
+        "parent": 21717,
+        "name": "O-Y149564",
+        "isParent": 1
+      },
+      {
+        "hid": 21728,
+        "parent": 21727,
+        "name": "O-TYT42012",
+        "isParent": 1
+      },
+      {
+        "hid": 26788,
+        "parent": 21728,
+        "name": "O-FT39702",
+        "isParent": 1
+      },
+      {
+        "hid": 21730,
+        "parent": 26788,
+        "name": "O-TYT196609",
+        "isParent": 1
+      },
+      {
+        "hid": 21729,
+        "parent": 26788,
+        "name": "O-Y25438",
+        "isParent": 1
+      },
+      {
+        "hid": 26956,
+        "parent": 21729,
+        "name": "O-TYT322988",
+        "isParent": 1
+      },
+      {
+        "hid": 21731,
+        "parent": 21727,
+        "name": "O-TYT202120",
+        "isParent": 1
+      },
+      {
+        "hid": 21733,
+        "parent": 21731,
+        "name": "O-TYT197996",
+        "isParent": 1
+      },
+      {
+        "hid": 44738,
+        "parent": 21733,
+        "name": " O-MF5383",
+        "isParent": 1
+      },
+      {
+        "hid": 21732,
+        "parent": 21731,
+        "name": "O-BY49060",
+        "isParent": 1
+      },
+      {
+        "hid": 44739,
+        "parent": 21732,
+        "name": "O-MF475043",
+        "isParent": 1
+      },
+      {
+        "hid": 27152,
+        "parent": 21732,
+        "name": "O-MF197045",
+        "isParent": 1
+      },
+      {
+        "hid": 26918,
+        "parent": 27152,
+        "name": "O-TYT245397",
+        "isParent": 1
+      },
+      {
+        "hid": 44740,
+        "parent": 27152,
+        "name": "O-MF498141",
+        "isParent": 1
+      }
+    ],
+    "snp": "FT88863",
+    "ancient": [
+      {
+        "sid": 75605,
+        "parent": 21717,
+        "name": "XM123 HRR1444584 河南省渑池县天池镇鹿寺村鹿寺西遗址 西周 2790±30 cal BP",
+        "haplogroup": "O-BY220310",
+        "stype": 2,
+        "sid_encrypted": "6d7a0fb3911021aaadd9d3d7615fe4b0",
+        "period": "西周"
+      }
+    ]
+  },
+  {
+    "branches": [
+      {
+        "hid": 21717,
+        "parent": 21402,
+        "name": "O-BY220310",
+        "isParent": 1
+      },
+      {
+        "hid": 21718,
+        "parent": 21717,
+        "name": "O-Y60765",
+        "isParent": 1
+      },
+      {
+        "hid": 21723,
+        "parent": 21718,
+        "name": "O-TYT29221",
+        "isParent": 1
+      },
+      {
+        "hid": 21725,
+        "parent": 21723,
+        "name": "O-TYT228596",
+        "isParent": 1
+      },
+      {
+        "hid": 21726,
+        "parent": 21723,
+        "name": "O-TYT32374",
+        "isParent": 0
+      },
+      {
+        "hid": 35726,
+        "parent": 21723,
+        "name": "O-MF278656",
+        "isParent": 1
+      },
+      {
+        "hid": 44485,
+        "parent": 21723,
+        "name": "O-MF501812",
+        "isParent": 1
+      },
+      {
+        "hid": 21719,
+        "parent": 21718,
+        "name": "O-TYT83569",
+        "isParent": 1
+      },
+      {
+        "hid": 35724,
+        "parent": 21719,
+        "name": "O-MF287302",
+        "isParent": 1
+      },
+      {
+        "hid": 31510,
+        "parent": 35724,
+        "name": "O-MF288090",
+        "isParent": 1
+      },
+      {
+        "hid": 44715,
+        "parent": 35724,
+        "name": "O-MF346558",
+        "isParent": 1
+      },
+      {
+        "hid": 44716,
+        "parent": 44715,
+        "name": "O-MF391637",
+        "isParent": 1
+      },
+      {
+        "hid": 44717,
+        "parent": 44715,
+        "name": "O-MF475026",
+        "isParent": 1
+      },
+      {
+        "hid": 35725,
+        "parent": 44715,
+        "name": "O-MF346543",
+        "isParent": 1
+      },
+      {
+        "hid": 21727,
+        "parent": 21717,
+        "name": "O-Y149564",
+        "isParent": 1
+      },
+      {
+        "hid": 21728,
+        "parent": 21727,
+        "name": "O-TYT42012",
+        "isParent": 1
+      },
+      {
+        "hid": 26788,
+        "parent": 21728,
+        "name": "O-FT39702",
+        "isParent": 1
+      },
+      {
+        "hid": 21730,
+        "parent": 26788,
+        "name": "O-TYT196609",
+        "isParent": 1
+      },
+      {
+        "hid": 21729,
+        "parent": 26788,
+        "name": "O-Y25438",
+        "isParent": 1
+      },
+      {
+        "hid": 26956,
+        "parent": 21729,
+        "name": "O-TYT322988",
+        "isParent": 1
+      },
+      {
+        "hid": 21731,
+        "parent": 21727,
+        "name": "O-TYT202120",
+        "isParent": 1
+      },
+      {
+        "hid": 21733,
+        "parent": 21731,
+        "name": "O-TYT197996",
+        "isParent": 1
+      },
+      {
+        "hid": 44738,
+        "parent": 21733,
+        "name": " O-MF5383",
+        "isParent": 1
+      },
+      {
+        "hid": 21732,
+        "parent": 21731,
+        "name": "O-BY49060",
+        "isParent": 1
+      },
+      {
+        "hid": 44739,
+        "parent": 21732,
+        "name": "O-MF475043",
+        "isParent": 1
+      },
+      {
+        "hid": 27152,
+        "parent": 21732,
+        "name": "O-MF197045",
+        "isParent": 1
+      },
+      {
+        "hid": 26918,
+        "parent": 27152,
+        "name": "O-TYT245397",
+        "isParent": 1
+      },
+      {
+        "hid": 44740,
+        "parent": 27152,
+        "name": "O-MF498141",
+        "isParent": 1
+      }
+    ],
+    "snp": "MF179328",
+    "ancient": [
+      {
+        "sid": 75605,
+        "parent": 21717,
+        "name": "XM123 HRR1444584 河南省渑池县天池镇鹿寺村鹿寺西遗址 西周 2790±30 cal BP",
+        "haplogroup": "O-BY220310",
+        "stype": 2,
+        "sid_encrypted": "6d7a0fb3911021aaadd9d3d7615fe4b0",
+        "period": "西周"
+      }
+    ]
+  },
+  {
+    "branches": [
+      {
+        "hid": 21717,
+        "parent": 21402,
+        "name": "O-BY220310",
+        "isParent": 1
+      },
+      {
+        "hid": 21718,
+        "parent": 21717,
+        "name": "O-Y60765",
+        "isParent": 1
+      },
+      {
+        "hid": 21723,
+        "parent": 21718,
+        "name": "O-TYT29221",
+        "isParent": 1
+      },
+      {
+        "hid": 21725,
+        "parent": 21723,
+        "name": "O-TYT228596",
+        "isParent": 1
+      },
+      {
+        "hid": 21726,
+        "parent": 21723,
+        "name": "O-TYT32374",
+        "isParent": 0
+      },
+      {
+        "hid": 35726,
+        "parent": 21723,
+        "name": "O-MF278656",
+        "isParent": 1
+      },
+      {
+        "hid": 44485,
+        "parent": 21723,
+        "name": "O-MF501812",
+        "isParent": 1
+      },
+      {
+        "hid": 21719,
+        "parent": 21718,
+        "name": "O-TYT83569",
+        "isParent": 1
+      },
+      {
+        "hid": 35724,
+        "parent": 21719,
+        "name": "O-MF287302",
+        "isParent": 1
+      },
+      {
+        "hid": 31510,
+        "parent": 35724,
+        "name": "O-MF288090",
+        "isParent": 1
+      },
+      {
+        "hid": 44715,
+        "parent": 35724,
+        "name": "O-MF346558",
+        "isParent": 1
+      },
+      {
+        "hid": 44716,
+        "parent": 44715,
+        "name": "O-MF391637",
+        "isParent": 1
+      },
+      {
+        "hid": 44717,
+        "parent": 44715,
+        "name": "O-MF475026",
+        "isParent": 1
+      },
+      {
+        "hid": 35725,
+        "parent": 44715,
+        "name": "O-MF346543",
+        "isParent": 1
+      },
+      {
+        "hid": 21727,
+        "parent": 21717,
+        "name": "O-Y149564",
+        "isParent": 1
+      },
+      {
+        "hid": 21728,
+        "parent": 21727,
+        "name": "O-TYT42012",
+        "isParent": 1
+      },
+      {
+        "hid": 26788,
+        "parent": 21728,
+        "name": "O-FT39702",
+        "isParent": 1
+      },
+      {
+        "hid": 21730,
+        "parent": 26788,
+        "name": "O-TYT196609",
+        "isParent": 1
+      },
+      {
+        "hid": 21729,
+        "parent": 26788,
+        "name": "O-Y25438",
+        "isParent": 1
+      },
+      {
+        "hid": 26956,
+        "parent": 21729,
+        "name": "O-TYT322988",
+        "isParent": 1
+      },
+      {
+        "hid": 21731,
+        "parent": 21727,
+        "name": "O-TYT202120",
+        "isParent": 1
+      },
+      {
+        "hid": 21733,
+        "parent": 21731,
+        "name": "O-TYT197996",
+        "isParent": 1
+      },
+      {
+        "hid": 44738,
+        "parent": 21733,
+        "name": " O-MF5383",
+        "isParent": 1
+      },
+      {
+        "hid": 21732,
+        "parent": 21731,
+        "name": "O-BY49060",
+        "isParent": 1
+      },
+      {
+        "hid": 44739,
+        "parent": 21732,
+        "name": "O-MF475043",
+        "isParent": 1
+      },
+      {
+        "hid": 27152,
+        "parent": 21732,
+        "name": "O-MF197045",
+        "isParent": 1
+      },
+      {
+        "hid": 26918,
+        "parent": 27152,
+        "name": "O-TYT245397",
+        "isParent": 1
+      },
+      {
+        "hid": 44740,
+        "parent": 27152,
+        "name": "O-MF498141",
+        "isParent": 1
+      }
+    ],
+    "snp": "MF179335",
+    "ancient": [
+      {
+        "sid": 75605,
+        "parent": 21717,
+        "name": "XM123 HRR1444584 河南省渑池县天池镇鹿寺村鹿寺西遗址 西周 2790±30 cal BP",
+        "haplogroup": "O-BY220310",
+        "stype": 2,
+        "sid_encrypted": "6d7a0fb3911021aaadd9d3d7615fe4b0",
+        "period": "西周"
+      }
+    ]
+  },
+  {
+    "branches": [
+      {
+        "hid": 2884,
+        "parent": 8,
+        "name": "F1",
+        "isParent": 1
+      },
+      {
+        "hid": 2885,
+        "parent": 8,
+        "name": "F-M481",
+        "isParent": 1
+      },
+      {
+        "hid": 12200,
+        "parent": 13,
+        "name": "K2c",
+        "isParent": 0
+      },
+      {
+        "hid": 12201,
+        "parent": 13,
+        "name": "K2d",
+        "isParent": 0
+      },
+      {
+        "hid": 2897,
+        "parent": 38428,
+        "name": "F4",
+        "isParent": 0
+      },
+      {
+        "hid": 44619,
+        "parent": 1,
+        "name": "Denisovans",
+        "isParent": 1
+      },
+      {
+        "hid": 38077,
+        "parent": 14,
+        "name": "K-MY1504",
+        "isParent": 1
+      },
+      {
+        "hid": 59,
+        "parent": 44625,
+        "name": "A00",
+        "isParent": 1
+      },
+      {
+        "hid": 26525,
+        "parent": 15,
+        "name": "K-Y86941",
+        "isParent": 1
+      },
+      {
+        "hid": 44624,
+        "parent": 44623,
+        "name": "Neanderthals",
+        "isParent": 1
+      },
+      {
+        "hid": 63,
+        "parent": 2,
+        "name": "A0",
+        "isParent": 1
+      },
+      {
+        "hid": 31532,
+        "parent": 37333,
+        "name": "F-F16167",
+        "isParent": 1
+      },
+      {
+        "hid": 37333,
+        "parent": 2886,
+        "name": "F-F23806",
+        "isParent": 1
+      },
+      {
+        "hid": 70,
+        "parent": 3,
+        "name": "A-M31",
+        "isParent": 1
+      },
+      {
+        "hid": 7655,
+        "parent": 7648,
+        "name": "S",
+        "isParent": 1
+      },
+      {
+        "hid": 31092,
+        "parent": 7648,
+        "name": "M",
+        "isParent": 1
+      },
+      {
+        "hid": 7648,
+        "parent": 7647,
+        "name": "K2b1",
+        "isParent": 1
+      },
+      {
+        "hid": 2887,
+        "parent": 38428,
+        "name": "F-M427",
+        "isParent": 1
+      },
+      {
+        "hid": 38428,
+        "parent": 2886,
+        "name": "F-FT89939",
+        "isParent": 1
+      },
+      {
+        "hid": 2886,
+        "parent": 8,
+        "name": "F-Y27277",
+        "isParent": 1
+      },
+      {
+        "hid": 80,
+        "parent": 4,
+        "name": "A1b1",
+        "isParent": 1
+      },
+      {
+        "hid": 146,
+        "parent": 5,
+        "name": "B",
+        "isParent": 1
+      },
+      {
+        "hid": 3306,
+        "parent": 10,
+        "name": "H",
+        "isParent": 1
+      },
+      {
+        "hid": 40004,
+        "parent": 232,
+        "name": "D",
+        "isParent": 1
+      },
+      {
+        "hid": 7265,
+        "parent": 12,
+        "name": "LT",
+        "isParent": 1
+      },
+      {
+        "hid": 7266,
+        "parent": 7265,
+        "name": "L",
+        "isParent": 1
+      },
+      {
+        "hid": 7393,
+        "parent": 7265,
+        "name": "T",
+        "isParent": 1
+      },
+      {
+        "hid": 2901,
+        "parent": 9,
+        "name": "G",
+        "isParent": 1
+      },
+      {
+        "hid": 7672,
+        "parent": 31091,
+        "name": "Q",
+        "isParent": 1
+      },
+      {
+        "hid": 440,
+        "parent": 232,
+        "name": "E",
+        "isParent": 1
+      },
+      {
+        "hid": 232,
+        "parent": 6,
+        "name": "DE",
+        "isParent": 1
+      },
+      {
+        "hid": 12204,
+        "parent": 16,
+        "name": "N",
+        "isParent": 1
+      },
+      {
+        "hid": 1587,
+        "parent": 7,
+        "name": "C",
+        "isParent": 1
+      },
+      {
+        "hid": 5399,
+        "parent": 3411,
+        "name": "J",
+        "isParent": 1
+      },
+      {
+        "hid": 3412,
+        "parent": 3411,
+        "name": "I",
+        "isParent": 1
+      },
+      {
+        "hid": 3411,
+        "parent": 11,
+        "name": "IJ",
+        "isParent": 1
+      },
+      {
+        "hid": 8366,
+        "parent": 31091,
+        "name": "R",
+        "isParent": 1
+      },
+      {
+        "hid": 31091,
+        "parent": 31090,
+        "name": "P-P226",
+        "isParent": 1
+      },
+      {
+        "hid": 31090,
+        "parent": 31089,
+        "name": "P-P284",
+        "isParent": 1
+      },
+      {
+        "hid": 31089,
+        "parent": 31088,
+        "name": "P-P337",
+        "isParent": 1
+      },
+      {
+        "hid": 31088,
+        "parent": 31086,
+        "name": "P-M1254",
+        "isParent": 1
+      },
+      {
+        "hid": 31086,
+        "parent": 7670,
+        "name": "P-F115",
+        "isParent": 1
+      },
+      {
+        "hid": 7670,
+        "parent": 7647,
+        "name": "P",
+        "isParent": 1
+      },
+      {
+        "hid": 7647,
+        "parent": 13,
+        "name": "K2b",
+        "isParent": 1
+      },
+      {
+        "hid": 17,
+        "parent": 16,
+        "name": "O",
+        "isParent": 1
+      },
+      {
+        "hid": 16,
+        "parent": 15,
+        "name": "NO",
+        "isParent": 1
+      },
+      {
+        "hid": 15,
+        "parent": 14,
+        "name": "K-M2311",
+        "isParent": 1
+      },
+      {
+        "hid": 14,
+        "parent": 30919,
+        "name": "K-M2335",
+        "isParent": 1
+      },
+      {
+        "hid": 30919,
+        "parent": 13,
+        "name": "K-M2308",
+        "isParent": 1
+      },
+      {
+        "hid": 13,
+        "parent": 12,
+        "name": "K2-M526",
+        "isParent": 1
+      },
+      {
+        "hid": 12,
+        "parent": 11,
+        "name": "K",
+        "isParent": 1
+      },
+      {
+        "hid": 11,
+        "parent": 10,
+        "name": "IJK",
+        "isParent": 1
+      },
+      {
+        "hid": 10,
+        "parent": 9,
+        "name": "HIJK",
+        "isParent": 1
+      },
+      {
+        "hid": 9,
+        "parent": 8,
+        "name": "GHIJK",
+        "isParent": 1
+      },
+      {
+        "hid": 8,
+        "parent": 7,
+        "name": "F",
+        "isParent": 1
+      },
+      {
+        "hid": 7,
+        "parent": 6,
+        "name": "CF",
+        "isParent": 1
+      },
+      {
+        "hid": 6,
+        "parent": 5,
+        "name": "CT",
+        "isParent": 1
+      },
+      {
+        "hid": 5,
+        "parent": 4,
+        "name": "BT",
+        "isParent": 1
+      },
+      {
+        "hid": 4,
+        "parent": 3,
+        "name": "A-P108",
+        "isParent": 1
+      },
+      {
+        "hid": 3,
+        "parent": 2,
+        "name": "A-P305",
+        "isParent": 1
+      },
+      {
+        "hid": 2,
+        "parent": 44625,
+        "name": "A0-T",
+        "isParent": 1
+      },
+      {
+        "hid": 44625,
+        "parent": 44623,
+        "name": "Modern_Humans",
+        "isParent": 1
+      },
+      {
+        "hid": 44623,
+        "parent": 1,
+        "name": "Neanderthals_And_Modern_Humans",
+        "isParent": 1
+      },
+      {
+        "hid": 1,
+        "parent": 0,
+        "name": "ROOT",
+        "isParent": 1
+      }
+    ],
+    "snp": "MF9923",
+    "ancient": []
+  },
+  {
+    "branches": [
+      {
+        "hid": 2884,
+        "parent": 8,
+        "name": "F1",
+        "isParent": 1
+      },
+      {
+        "hid": 2885,
+        "parent": 8,
+        "name": "F-M481",
+        "isParent": 1
+      },
+      {
+        "hid": 12200,
+        "parent": 13,
+        "name": "K2c",
+        "isParent": 0
+      },
+      {
+        "hid": 12201,
+        "parent": 13,
+        "name": "K2d",
+        "isParent": 0
+      },
+      {
+        "hid": 2897,
+        "parent": 38428,
+        "name": "F4",
+        "isParent": 0
+      },
+      {
+        "hid": 44619,
+        "parent": 1,
+        "name": "Denisovans",
+        "isParent": 1
+      },
+      {
+        "hid": 38077,
+        "parent": 14,
+        "name": "K-MY1504",
+        "isParent": 1
+      },
+      {
+        "hid": 59,
+        "parent": 44625,
+        "name": "A00",
+        "isParent": 1
+      },
+      {
+        "hid": 26525,
+        "parent": 15,
+        "name": "K-Y86941",
+        "isParent": 1
+      },
+      {
+        "hid": 44624,
+        "parent": 44623,
+        "name": "Neanderthals",
+        "isParent": 1
+      },
+      {
+        "hid": 63,
+        "parent": 2,
+        "name": "A0",
+        "isParent": 1
+      },
+      {
+        "hid": 31532,
+        "parent": 37333,
+        "name": "F-F16167",
+        "isParent": 1
+      },
+      {
+        "hid": 37333,
+        "parent": 2886,
+        "name": "F-F23806",
+        "isParent": 1
+      },
+      {
+        "hid": 70,
+        "parent": 3,
+        "name": "A-M31",
+        "isParent": 1
+      },
+      {
+        "hid": 7655,
+        "parent": 7648,
+        "name": "S",
+        "isParent": 1
+      },
+      {
+        "hid": 31092,
+        "parent": 7648,
+        "name": "M",
+        "isParent": 1
+      },
+      {
+        "hid": 7648,
+        "parent": 7647,
+        "name": "K2b1",
+        "isParent": 1
+      },
+      {
+        "hid": 2887,
+        "parent": 38428,
+        "name": "F-M427",
+        "isParent": 1
+      },
+      {
+        "hid": 38428,
+        "parent": 2886,
+        "name": "F-FT89939",
+        "isParent": 1
+      },
+      {
+        "hid": 2886,
+        "parent": 8,
+        "name": "F-Y27277",
+        "isParent": 1
+      },
+      {
+        "hid": 80,
+        "parent": 4,
+        "name": "A1b1",
+        "isParent": 1
+      },
+      {
+        "hid": 146,
+        "parent": 5,
+        "name": "B",
+        "isParent": 1
+      },
+      {
+        "hid": 3306,
+        "parent": 10,
+        "name": "H",
+        "isParent": 1
+      },
+      {
+        "hid": 40004,
+        "parent": 232,
+        "name": "D",
+        "isParent": 1
+      },
+      {
+        "hid": 7265,
+        "parent": 12,
+        "name": "LT",
+        "isParent": 1
+      },
+      {
+        "hid": 7266,
+        "parent": 7265,
+        "name": "L",
+        "isParent": 1
+      },
+      {
+        "hid": 7393,
+        "parent": 7265,
+        "name": "T",
+        "isParent": 1
+      },
+      {
+        "hid": 2901,
+        "parent": 9,
+        "name": "G",
+        "isParent": 1
+      },
+      {
+        "hid": 7672,
+        "parent": 31091,
+        "name": "Q",
+        "isParent": 1
+      },
+      {
+        "hid": 440,
+        "parent": 232,
+        "name": "E",
+        "isParent": 1
+      },
+      {
+        "hid": 232,
+        "parent": 6,
+        "name": "DE",
+        "isParent": 1
+      },
+      {
+        "hid": 12204,
+        "parent": 16,
+        "name": "N",
+        "isParent": 1
+      },
+      {
+        "hid": 1587,
+        "parent": 7,
+        "name": "C",
+        "isParent": 1
+      },
+      {
+        "hid": 5399,
+        "parent": 3411,
+        "name": "J",
+        "isParent": 1
+      },
+      {
+        "hid": 3412,
+        "parent": 3411,
+        "name": "I",
+        "isParent": 1
+      },
+      {
+        "hid": 3411,
+        "parent": 11,
+        "name": "IJ",
+        "isParent": 1
+      },
+      {
+        "hid": 8366,
+        "parent": 31091,
+        "name": "R",
+        "isParent": 1
+      },
+      {
+        "hid": 31091,
+        "parent": 31090,
+        "name": "P-P226",
+        "isParent": 1
+      },
+      {
+        "hid": 31090,
+        "parent": 31089,
+        "name": "P-P284",
+        "isParent": 1
+      },
+      {
+        "hid": 31089,
+        "parent": 31088,
+        "name": "P-P337",
+        "isParent": 1
+      },
+      {
+        "hid": 31088,
+        "parent": 31086,
+        "name": "P-M1254",
+        "isParent": 1
+      },
+      {
+        "hid": 31086,
+        "parent": 7670,
+        "name": "P-F115",
+        "isParent": 1
+      },
+      {
+        "hid": 7670,
+        "parent": 7647,
+        "name": "P",
+        "isParent": 1
+      },
+      {
+        "hid": 7647,
+        "parent": 13,
+        "name": "K2b",
+        "isParent": 1
+      },
+      {
+        "hid": 17,
+        "parent": 16,
+        "name": "O",
+        "isParent": 1
+      },
+      {
+        "hid": 16,
+        "parent": 15,
+        "name": "NO",
+        "isParent": 1
+      },
+      {
+        "hid": 15,
+        "parent": 14,
+        "name": "K-M2311",
+        "isParent": 1
+      },
+      {
+        "hid": 14,
+        "parent": 30919,
+        "name": "K-M2335",
+        "isParent": 1
+      },
+      {
+        "hid": 30919,
+        "parent": 13,
+        "name": "K-M2308",
+        "isParent": 1
+      },
+      {
+        "hid": 13,
+        "parent": 12,
+        "name": "K2-M526",
+        "isParent": 1
+      },
+      {
+        "hid": 12,
+        "parent": 11,
+        "name": "K",
+        "isParent": 1
+      },
+      {
+        "hid": 11,
+        "parent": 10,
+        "name": "IJK",
+        "isParent": 1
+      },
+      {
+        "hid": 10,
+        "parent": 9,
+        "name": "HIJK",
+        "isParent": 1
+      },
+      {
+        "hid": 9,
+        "parent": 8,
+        "name": "GHIJK",
+        "isParent": 1
+      },
+      {
+        "hid": 8,
+        "parent": 7,
+        "name": "F",
+        "isParent": 1
+      },
+      {
+        "hid": 7,
+        "parent": 6,
+        "name": "CF",
+        "isParent": 1
+      },
+      {
+        "hid": 6,
+        "parent": 5,
+        "name": "CT",
+        "isParent": 1
+      },
+      {
+        "hid": 5,
+        "parent": 4,
+        "name": "BT",
+        "isParent": 1
+      },
+      {
+        "hid": 4,
+        "parent": 3,
+        "name": "A-P108",
+        "isParent": 1
+      },
+      {
+        "hid": 3,
+        "parent": 2,
+        "name": "A-P305",
+        "isParent": 1
+      },
+      {
+        "hid": 2,
+        "parent": 44625,
+        "name": "A0-T",
+        "isParent": 1
+      },
+      {
+        "hid": 44625,
+        "parent": 44623,
+        "name": "Modern_Humans",
+        "isParent": 1
+      },
+      {
+        "hid": 44623,
+        "parent": 1,
+        "name": "Neanderthals_And_Modern_Humans",
+        "isParent": 1
+      },
+      {
+        "hid": 1,
+        "parent": 0,
+        "name": "ROOT",
+        "isParent": 1
+      }
+    ],
+    "snp": "Y207525",
+    "ancient": []
+  }
+]
