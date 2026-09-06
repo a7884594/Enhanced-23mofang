@@ -6,6 +6,7 @@ import {resizeOriginalMap} from './original-map';
 const w=window as any;
 if(!w.__mofangCountyBridgeV1) {
   w.__mofangCountyBridgeV1=true;
+  let active=false;
   let fingerprint=''; let router:any; let component:any; let lastBranch:any;
   let previousNode:string|null=null; let blockedBranch:any; let navigating=false;
   let started=Date.now(); const firstURL=location.pathname+location.search;
@@ -75,11 +76,10 @@ if(!w.__mofangCountyBridgeV1) {
   }
   window.addEventListener('message',event=>{
     if(event.source!==window||event.origin!==location.origin||event.data?.channel!==CHANNEL)return;
-    if(event.data?.type==='request')read(true);
+    if(event.data?.type==='request'){active=true;read(true);}
     if(event.data?.type==='resize-original'&&typeof event.data.route==='string')requestOriginalResize(event.data.route);
   });
-  window.addEventListener('popstate',()=>{started=Date.now();read();});
-  window.addEventListener('pageshow',()=>read(true));
-  setInterval(()=>{if(!document.hidden)read();},400);
-  read();
+  window.addEventListener('popstate',()=>{if(active){started=Date.now();read();}});
+  window.addEventListener('pageshow',()=>{if(active)read(true);});
+  setInterval(()=>{if(active&&!document.hidden)read();},400);
 }

@@ -1,6 +1,6 @@
 {
-  "name": "23mofang-county-map",
-  "version": "1.5.3",
+  "name": "enhanced-23mofang",
+  "version": "1.5.15",
   "private": true,
   "type": "module",
   "scripts": {

@@ -1,4 +1,5 @@
-import {snp,snps} from './snps';
+import {snp} from './snps';
+import {orderedSnpGroups} from './snp-order';
 import type {SnpResult} from './snp-result';
 
 /** Query only on explicit submit; names merely fill the input. Results are text-only. */
@@ -23,10 +24,11 @@ export function createSnpLookup(doc:Document,read?:(name:string)=>Promise<string
     if(!read||!owner||loaded||loading)return;
     const token=generation,name=owner;loading=true;retry.hidden=true;status.textContent=`正在读取 ${name} 的本节点SNP…`;
     try{
-      const values=snps(await read(name));if(token!==generation)return;
+      const values=orderedSnpGroups(await read(name));if(token!==generation)return;
       if(!values.length)throw Error('页面尚未提供本节点SNP，请等待树加载后重新读取。');
-      for(const value of values){const tag=doc.createElement('button');tag.type='button';tag.textContent=value;tag.title='点击填入查询框';tag.onclick=()=>{input.value=value;input.setCustomValidity('');clearResult();select();};list.append(tag);}
-      loaded=true;status.textContent=`来自 ${name} · 全部 ${values.length} 个SNP · 点击名称填入`;select();
+      for(const group of values){const row=doc.createElement('span');row.className='snp-group';const aliases=group.split('/');
+        aliases.forEach((value,index)=>{if(index)row.append(doc.createTextNode('/'));const tag=doc.createElement('button');tag.type='button';tag.textContent=value;tag.title='点击填入查询框';tag.onclick=()=>{input.value=value;input.setCustomValidity('');clearResult();select();};row.append(tag);});list.append(row);}
+      loaded=true;status.textContent=`${name} · ${values.length} 组 SNP · 保留23魔方原有顺序与同义分组`;select();
     }catch(error){if(token===generation){status.textContent=error instanceof Error?error.message:'读取失败，请重试';retry.hidden=false;}}
     finally{if(token===generation)loading=false;}
   }
@@ -42,6 +44,6 @@ export function createSnpLookup(doc:Document,read?:(name:string)=>Promise<string
     finally{if(token===queryGeneration)button.disabled=false;}
   };
   const note=doc.createElement('p');note.textContent='仅点击“查询”后读取SNP结果；不会自动打开网页。';
-  section.append(form,output,status,list,retry,note);
-  return {element:section,setMarker(name:string){generation++;clearResult();owner=name;loaded=false;loading=false;list.replaceChildren();retry.hidden=true;status.textContent=`来自 ${name} · 展开后读取本节点全部SNP`;input.value=snp(name)||'';input.setCustomValidity('');section.open=false;}};
+  const layout=doc.createElement('div');layout.className='snp-layout';layout.append(form,output,status,list,retry,note);section.append(layout);
+  return {element:section,reset(){generation++;clearResult();owner='';loaded=false;loading=false;list.replaceChildren();status.textContent='';},setMarker(name:string){generation++;clearResult();owner=name;loaded=false;loading=false;list.replaceChildren();retry.hidden=true;status.textContent=name?`来自 ${name} · 展开后读取本节点全部SNP`:'输入SNP名称，选择来源后查询';input.value=snp(name)||'';input.setCustomValidity('');section.open=false;}};
 }

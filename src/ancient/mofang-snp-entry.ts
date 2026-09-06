@@ -1,9 +1,3 @@
-import {createSnpLookup} from './snp-lookup';import {requestMofangSnp} from './mofang-snp-result';
-function update(){
-  const enabled=['/report/ancestry','/report/gene-origin/my-origin'].includes(location.pathname.replace(/\/$/,''));
-  const old=document.getElementById('mofang-report-snp');if(!enabled){old?.remove();return;}if(old||!document.body)return;
-  const host=document.createElement('div');host.id='mofang-report-snp';const shadow=host.attachShadow({mode:'open'});
-  shadow.innerHTML='<style>:host{position:fixed;right:18px;bottom:20px;z-index:2147483500;font:13px/1.6 system-ui;color:#654e2d}section{background:#fffdf9;border:1px solid #ddcbb0;border-radius:8px;padding:10px;box-shadow:0 4px 20px #0002;max-width:calc(100vw - 40px)}button,input,select{font:inherit;padding:5px;border:1px solid #ddcbb0;border-radius:4px;background:white;color:inherit}button,summary{cursor:pointer}.body{width:380px;max-width:calc(100vw - 64px);max-height:65vh;overflow:auto}input{max-width:170px}a{color:#397389}p{font-size:12px}[hidden]{display:none!important}</style><section><button class="open">SNP查询</button> <a href="/report/gene-origin/my-origin">宗亲分化树 ↗</a><div class="body" hidden></div></section>';
-  const lookup=createSnpLookup(document,undefined,async(value,provider)=>{if(provider==='mofang')return requestMofangSnp(value);const r=await chrome.runtime.sendMessage({type:'anc.snpLookup',snp:value});if(!r?.ok)throw Error(r?.error||'查询失败');return r.value;});lookup.element.open=true;shadow.querySelector('.body')!.append(lookup.element);shadow.querySelector<HTMLButtonElement>('.open')!.onclick=()=>{const body=shadow.querySelector<HTMLElement>('.body')!;body.hidden=!body.hidden;};document.body.append(host);
-}
-if(document.body)update();else document.addEventListener('DOMContentLoaded',update,{once:true});window.addEventListener('popstate',update);let scheduled=false;new MutationObserver(()=>{if(scheduled)return;scheduled=true;setTimeout(()=>{scheduled=false;update();},500);}).observe(document.documentElement,{childList:true,subtree:true});
+import {bootSnpPage} from './snp-page';
+if (document.body) bootSnpPage();
+else document.addEventListener('DOMContentLoaded', () => bootSnpPage(), {once: true});

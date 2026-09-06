@@ -1,5 +1,6 @@
 import {parse} from 'acorn';
 import {snps} from './snps';
+import {orderedSnpGroups} from './snp-order';
 // Interpret only literal Nuxt serialization. Downloaded scripts are never run.
 function literal(n:any,env:any=Object.create(null)):any {
   if(!n)throw Error('缺少页面数据');
@@ -13,14 +14,14 @@ function literal(n:any,env:any=Object.create(null)):any {
   }
   throw Error('页面包含不可解析的数据表达式');
 }
-export function htmlSnps(html:string,name:string):string[]{
+export function htmlSnps(html:string,name:string,display=false):string[]{
   const source=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]).find(s=>s.startsWith('window.__NUXT__='));
   if(!source)return [];
   const ast:any=parse(source,{ecmaVersion:2022});const a=ast.body[0]?.expression;
   if(a?.type!=='AssignmentExpression')return [];
   const nuxt=literal(a.right);const stack=(nuxt.data||[]).map((d:any)=>d?.treeData);let count=0;
   while(stack.length&&count++<150000){const n=stack.pop();if(!n)continue;
-    if(n.id===name)return snps(n.rsids);
+    if(n.id===name)return display?orderedSnpGroups(n.rsids):snps(n.rsids);
     if(Array.isArray(n.children))stack.push(...n.children);
   }
   return [];

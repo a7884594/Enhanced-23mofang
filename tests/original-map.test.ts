@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {resizeOriginalMap} from '../src/original-map.ts';
+import {hideOriginalMap,showOriginalMap} from '../src/original-visibility';
 const {JSDOM}=createRequire(import.meta.url)('jsdom');
 function setup(){
   const dom=new JSDOM('<main><section id="original"><div id="map"></div></section><div id="other"></div></main>');
@@ -12,6 +13,16 @@ function setup(){
   const root:any={$children:[{myChart:instance}]};
   return {dom,container,map,calls,instance,root};
 }
+test('hiding native map keeps display measurable and restores exact inline styles across repeated toggles',()=>{
+  const h=setup();h.container.style.cssText='position:relative;width:80%!important;color:red';
+  const original=h.container.style.cssText;
+  for(let i=0;i<3;i++){
+    hideOriginalMap(h.container);hideOriginalMap(h.container);
+    assert.notEqual(h.container.style.display,'none');assert.equal(h.container.style.visibility,'hidden');assert.equal(h.container.style.width,'700px');
+    showOriginalMap(h.container);assert.equal(h.container.style.width,'80%');assert.equal(h.container.style.getPropertyPriority('width'),'important');assert.equal(h.container.style.position,'relative');assert.equal(h.container.style.left,'');assert.equal(h.container.style.visibility,'');
+  }
+  assert.ok(original.includes('red'));h.dom.window.close();
+});
 test('restored original map receives explicit nonzero dimensions',()=>{
   const h=setup();assert.equal(resizeOriginalMap(h.root,h.container),true);assert.deepEqual(h.calls,[{width:488,height:324}]);h.dom.window.close();
 });

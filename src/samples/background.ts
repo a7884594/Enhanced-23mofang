@@ -1,6 +1,7 @@
 import {RequestGate,type IO} from '../ancient/engine';
 import {query} from './service';
 import {nearest} from './nearest';
+import {SampleSessions} from './sessions';
 const gate:RequestGate=((globalThis as any).__mofangSharedGate??=new RequestGate());
 let writes:Promise<unknown>=Promise.resolve();
 async function save(key:string,value:any){
@@ -15,18 +16,17 @@ async function save(key:string,value:any){
   });writes=work;await work;
 }
 const io:IO={get:async key=>(await chrome.storage.local.get(key))[key],set:save,request:(url,signal)=>gate.fetch(url,signal),now:()=>Date.now(),id:()=>crypto.randomUUID()};
-const active=new Map<number,{token:string;controls:Set<AbortController>}>();
+const sessions=new SampleSessions({get:async key=>(await chrome.storage.session.get(key))[key],set:(key,value)=>chrome.storage.session.set({[key]:value}),remove:key=>chrome.storage.session.remove(key)});
 chrome.runtime.onMessage.addListener((m,sender,reply)=>{
   if(!m?.type?.startsWith('samples.'))return;
   (async()=>{
     if(!sender.url||new URL(sender.url).origin!=='https://www.23mofang.com'||sender.tab?.id==null)throw Error('仅23魔方页面可发起查询');
-    const tab=sender.tab.id;
-    if(m.type==='samples.begin'){for(const c of active.get(tab)?.controls||[])c.abort();const token=crypto.randomUUID();active.set(tab,{token,controls:new Set()});return {token};}
-    const task=active.get(tab);if(!task||m.token!==task.token)throw Error('查询已切换或取消');
-    if(m.type==='samples.cancel'){for(const c of task.controls)c.abort();active.delete(tab);return true;}
+    const tab=sender.tab.id,owner=sender.documentId||sender.url;
+    if(m.type==='samples.begin')return sessions.begin(tab,owner);
+    if(m.type==='samples.cancel')return sessions.cancel(tab,owner,m.token);
     if(!['samples.query','samples.nearest'].includes(m.type))throw Error('未知请求');
-    if(task.controls.size>=3)throw Error('当前请求尚未完成');const c=new AbortController();task.controls.add(c);
-    try{return m.type==='samples.nearest'?await nearest(io,m.provider,m.marker,m.ancestors,c.signal):await query(io,m.provider,m.marker,!!m.refresh,c.signal,!!m.more);}finally{task.controls.delete(c);}
+    const task=await sessions.acquire(tab,owner,m.token);
+    try{return m.type==='samples.nearest'?await nearest(io,m.provider,m.marker,m.ancestors,task.signal):await query(io,m.provider,m.marker,!!m.refresh,task.signal,!!m.more);}finally{task.release();}
   })().then(value=>reply({ok:true,value}),error=>reply({ok:false,error:String(error)}));return true;
 });
-chrome.tabs.onRemoved.addListener(tab=>{for(const c of active.get(tab)?.controls||[])c.abort();active.delete(tab);});
+chrome.tabs.onRemoved.addListener(tab=>{void sessions.remove(tab).catch(error=>console.error('清理样本会话失败',error));});

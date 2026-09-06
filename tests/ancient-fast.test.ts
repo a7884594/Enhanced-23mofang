@@ -49,10 +49,10 @@ test('age changes remove existing SVG buttons and close their open panel',async(
  assert.equal(h.w.document.querySelector('[data-marker="O-F8"]'),null);assert.equal(h.w.document.querySelector('#mofang-ancient-panel').shadowRoot.querySelector('.panel').hidden,true);
  }finally{h.dom.window.close();}
 });
-test('analysis-page entry follows the same threshold and updates when subtitle changes',async()=>{
+test('analysis-page keeps sample entries absent when subtitle age changes',async()=>{
  const h=harness(false,'<main><h1>O-F8 支系分析</h1><p>形成时间距今199年</p><section>宗亲10000人</section></main>','/ancestry/ytree/O-F8/branch');try{
  assert.equal(analysisAge(h.w.document),199);assert.equal(h.w.document.getElementById('mofang-ancient-entry'),null);
- h.w.document.querySelector('p').textContent='形成时间距今200年';await new Promise(r=>setTimeout(r,740));assert.ok(h.w.document.getElementById('mofang-ancient-entry'));
+ h.w.document.querySelector('p').textContent='形成时间距今200年';await new Promise(r=>setTimeout(r,740));assert.equal(h.w.document.getElementById('mofang-ancient-entry'),null);
  h.w.document.querySelector('p').textContent='形成时间距今199年';await new Promise(r=>setTimeout(r,740));assert.equal(h.w.document.getElementById('mofang-ancient-entry'),null);
  }finally{h.dom.window.close();}
 });

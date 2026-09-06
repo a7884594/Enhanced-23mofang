@@ -5,10 +5,11 @@ import {CHANNEL,copyRegions,copySelections,flatten,flattenCities,matchCounties,p
 import {CSS} from './style';
 import {prepareAtlas} from './geography';
 import {findMapMount,insertMapHost} from './layout';
+import {hideOriginalMap,showOriginalMap} from './original-visibility';
 echarts.use([GeoComponent,TooltipComponent,CanvasRenderer]);
 
 let host:HTMLElement|null=null, shadow:ShadowRoot|null=null, original:HTMLElement|null=null;
-let originalDisplay='';let chart:echarts.ECharts|null=null;let observer:ResizeObserver|null=null;
+let chart:echarts.ECharts|null=null;let observer:ResizeObserver|null=null;
 type Detail='county'|'city';
 type Mode=Detail|'province';
 let snapshot:Snapshot|null=null;const atlasPromises:Partial<Record<Detail,Promise<Atlas>>>={};let generation=0;
@@ -29,7 +30,7 @@ function requestOriginalResize(container:HTMLElement){
   requestAnimationFrame(()=>requestAnimationFrame(notify));
   setTimeout(notify,300);
 }
-function showOriginal(){if(original){original.style.display=originalDisplay;requestOriginalResize(original);}}
+function showOriginal(){if(original){showOriginalMap(original);requestOriginalResize(original);}}
 function restoreOriginal(){showOriginal();original=null;}
 function cleanup(){generation++;chart?.dispose();chart=null;observer?.disconnect();observer=null;restoreOriginal();host?.remove();host=null;shadow=null;boundTo=null;matched=[];}
 function unit(){return detail==='city'?'市级':'区县';}
@@ -39,7 +40,7 @@ function updateVisibility(){
   q('.map-wrap').hidden=!value||!chart;
   q('.unmatched').hidden=!value||!q('tbody').children.length;
   for(const tab of ['county','city','province'])q(`.${tab}-tab`).setAttribute('aria-selected',String(mode===tab));
-  if(original){if(value&&snapshot?.status==='ready'&&chart){originalResizeGeneration++;original.style.display='none';}else showOriginal();}
+  if(original){if(value&&snapshot?.status==='ready'&&chart){originalResizeGeneration++;hideOriginalMap(original);}else showOriginal();}
   if(value)requestAnimationFrame(()=>chart?.resize());
 }
 function setMode(next:Mode){
@@ -59,7 +60,7 @@ function mount():boolean {
   <div class="notice" role="status">正在读取当前支系的区县频率…</div>
   <div class="map-wrap" hidden><div class="tools"><div class="search"><input aria-label="搜索区县" placeholder="搜索省、市或区县名称" autocomplete="off"><div class="results" aria-label="搜索结果"></div></div><button class="reset">恢复全国</button><button class="fullscreen">全屏查看</button><span class="hint">滚轮缩放 · 拖动平移 · 点击查看</span></div><div class="selection" aria-live="polite"></div><div class="map" role="img" aria-label="全国区县频率着色图，支持搜索地名查看数值"></div><div class="legend"></div></div>
   <div class="status" role="status"></div><details class="unmatched" hidden><summary></summary><div class="scroll"><table><thead><tr><th>网站区县</th><th>频率</th><th>未匹配原因</th></tr></thead><tbody></tbody></table></div></details><div class="foot">频率口径沿用23魔方：该支系（包含下游）在当地人口中的比例。灰色表示未提供区县频率或未匹配，非 0%。</div></div><dialog class="fullscreen-dialog" aria-label="全国区县频率地图全屏视图"></dialog>`;
-  if(container){original=container;originalDisplay=container.style.display;}
+  if(container)original=container;
   insertMapHost(host,target);
   q('.county-tab').onclick=()=>setMode('county');q('.city-tab').onclick=()=>setMode('city');q('.province-tab').onclick=()=>setMode('province');
   q('.reset').onclick=()=>{chart?.setOption({geo:{center:null,zoom:1}});text('.selection','');q<HTMLInputElement>('input').value='';q('.results').replaceChildren();chart?.dispatchAction({type:'downplay'});};

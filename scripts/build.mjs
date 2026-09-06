@@ -2,11 +2,20 @@ import {build} from 'esbuild';
 import {mkdir,copyFile,readFile,writeFile,appendFile} from 'node:fs/promises';
 import {deflateSync} from 'node:zlib';
 await mkdir('dist/assets',{recursive:true});await mkdir('dist/icons',{recursive:true});
-await build({entryPoints:['src/content.ts','src/bridge.ts','src/ancient/ui.ts','src/ancient/mofang-bridge.ts','src/ancient/background.ts','src/ancient/source.ts','src/ancient/source-bridge.ts','src/ancient/mofang-snp-bridge.ts','src/ancient/mofang-snp-entry.ts'],outdir:'dist',outbase:'src',define:{__RESEARCH__:'false'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
-await build({entryPoints:['src/ancient/ui.ts','src/ancient/mofang-bridge.ts','src/ancient/background.ts','src/ancient/source.ts','src/ancient/source-bridge.ts'],outdir:'dist/research',outbase:'src/ancient',define:{__RESEARCH__:'true'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
+await build({entryPoints:['src/popup.ts','src/bridge.ts','src/ancient/mofang-bridge.ts','src/ancient/background.ts','src/ancient/source.ts','src/ancient/source-bridge.ts','src/ancient/mofang-snp-bridge.ts'],outdir:'dist',outbase:'src',define:{__RESEARCH__:'false'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
+await build({entryPoints:['src/ancient/mofang-bridge.ts','src/ancient/background.ts','src/ancient/source.ts','src/ancient/source-bridge.ts'],outdir:'dist/research',outbase:'src/ancient',define:{__RESEARCH__:'true'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
+// Bundle lazy initializers so disabled features never install UI, timers, or observers.
+for(const [source,output,feature,research] of [
+  ['content','content','map',false],
+  ['ancient/ui','ancient/ui','samples',false],
+  ['ancient/ui','research/ui','samples',true],
+  ['samples/ui','samples/ui','samples',false],
+  ['ancient/mofang-snp-entry','ancient/mofang-snp-entry','samples',false],
+]) await build({stdin:{contents:`import {runFeature} from './src/features'; void runFeature('${feature}',()=>import('./src/${source}'));`,resolveDir:process.cwd(),loader:'ts'},outfile:`dist/${output}.js`,define:{__RESEARCH__:String(research)},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
+await copyFile('src/popup.html','dist/popup.html');
 // One classic MV3 worker, two isolated message handlers, one shared request gate.
 await appendFile('dist/ancient/background.js','\nimportScripts("../research/background.js");\n');
-await build({entryPoints:['src/samples/ui.ts','src/samples/background.ts','src/samples/ancestry-bridge.ts'],outdir:'dist/samples',outbase:'src/samples',define:{__RESEARCH__:'false'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
+await build({entryPoints:['src/samples/background.ts','src/samples/ancestry-bridge.ts'],outdir:'dist/samples',outbase:'src/samples',define:{__RESEARCH__:'false'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
 await appendFile('dist/ancient/background.js','\nimportScripts("../samples/background.js");\n');
 await copyFile('manifest.json','dist/manifest.json');
 await copyFile('assets/counties.geo.json','dist/assets/counties.geo.json');

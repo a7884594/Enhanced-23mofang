@@ -5,21 +5,21 @@ import {parseDetail} from './parser';
 import {snps,checkSnp,snpUrl,mappingTarget,needsSnpQuery,rebaseSearch} from './snps';
 import {equivalentEvidence,applyEquivalent,disambiguate,pendingEquivalentCandidates,type EquivalentEvidence} from './equivalent';
 import {directProjections,subtreeProjection} from './projection';
-import {knownDirectCount,type BadgeCount} from './counts';
+import {knownDirectCount,downstreamCounts,type BadgeCount} from './counts';
 import {loadMatch,confirmedMatch,matchKey} from './node-match';
 import {resolveTarget} from './aliases';
 export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Promise<void>;request(url:string,signal:AbortSignal):Promise<{status:number;url:string;body:string}>;now():number;id():string}
 export class SyncRequired extends Error{}
 export const jobKey=(id:string)=>profileText(`anc.job.${id}`);
 export const cacheKey=(m:string,s:string)=>profileText(`anc.cache.fast4.${m}.${s}`);
-/** Shared gate: up to two SNP searches; other requests remain exclusive. */
+/** Shared gate: four total reads, at most two details, 500ms starts; trees stay exclusive. */
 export class RequestGate {
   private tail:Promise<any>=Promise.resolve();private next=0;
-  private active=new Map<Promise<any>,boolean>();
+  private active=new Map<Promise<any>,'snp'|'detail'|'tree'>();
   fetch(url:string,signal:AbortSignal){
     const work=this.tail.catch(()=>{}).then(async()=>{
-      const u=new URL(url);const search=u.pathname==='/api/ysnp/theytree/'&&u.searchParams.has('snp');
-      while(this.active.size&&(!search||this.active.size>=2||[...this.active.values()].some(v=>!v))){await Promise.race([...this.active.keys()].map(p=>p.catch(()=>{})));if(signal.aborted)throw new DOMException('Cancelled','AbortError');}
+      const u=new URL(url);const kind=u.origin===TY&&u.pathname==='/api/ysnp/theytree/'&&u.searchParams.has('snp')?'snp':u.origin===TY&&/^\/sample\/[a-zA-Z0-9_-]+\.html$/.test(u.pathname)?'detail':'tree';
+      while(this.active.size&&(kind==='tree'||this.active.size>=4||[...this.active.values()].includes('tree')||kind==='detail'&&[...this.active.values()].filter(v=>v==='detail').length>=2)){await Promise.race([...this.active.keys()].map(p=>p.catch(()=>{})));if(signal.aborted)throw new DOMException('Cancelled','AbortError');}
       const wait=Math.max(0,this.next-Date.now());if(wait)await new Promise(r=>setTimeout(r,wait));
       if(signal.aborted)throw new DOMException('Cancelled','AbortError');
       this.next=Date.now()+500;
@@ -27,7 +27,7 @@ export class RequestGate {
       const abort=()=>control.abort();signal.addEventListener('abort',abort,{once:true});timeout.addEventListener('abort',abort,{once:true});
       const responseTask=(async()=>{try{const response=await fetch(url,{credentials:'include',signal:control.signal,redirect:'follow',referrerPolicy:'no-referrer'});return {status:response.status,url:response.url,body:await response.text()};}
       finally{signal.removeEventListener('abort',abort);timeout.removeEventListener('abort',abort);}})();
-      this.active.set(responseTask,search);void responseTask.finally(()=>this.active.delete(responseTask)).catch(()=>{});
+      this.active.set(responseTask,kind);void responseTask.finally(()=>this.active.delete(responseTask)).catch(()=>{});
       return {responseTask};
     });this.tail=work;return work.then(v=>v.responseTask);
   }
@@ -36,9 +36,27 @@ export class AncientEngine {
   private active=new Map<string,AbortController>();
   constructor(private io:IO){}
   private remembered=new Map<string,string>();
+  private badgeSynced=new Set<string>();
   private async rememberMatch(j:QueryResult){const value=confirmedMatch(j);if(!value||j.matchReused)return;const fingerprint=JSON.stringify([value.target,value.nodeSnps,value.snpChecks]);if(this.remembered.get(j.id)===fingerprint)return;await this.io.set(matchKey(j.marker),value);j.mappingVerifiedAt=value.verifiedAt;this.remembered.set(j.id,fingerprint);}
-  async save(job:QueryResult,touch=true){if(touch)job.updatedAt=this.io.now();await this.rememberMatch(job);await this.io.set(jobKey(job.id),job);if(!job.complete&&job.status!=='unmatched')await this.io.set(profileText(`anc.pending.fast4.${job.marker}.${job.scope}`),job.id);}
-  async get(id:string):Promise<QueryResult|null>{const j=await this.io.get(jobKey(id));if(j?.status==='running'&&!this.active.has(id)){j.status='paused';j.message='后台任务已暂停，可继续查询';await this.save(j);}return j||null;}
+  async save(job:QueryResult,touch=true){
+    const previous=job.scope==='downstream'?await this.io.get(jobKey(job.id)):null;
+    if(touch)job.updatedAt=this.io.now();await this.rememberMatch(job);await this.io.set(jobKey(job.id),job);
+    if(!job.complete&&job.status!=='unmatched')await this.io.set(profileText(`anc.pending.fast4.${job.marker}.${job.scope}`),job.id);
+    if(job.scope==='downstream'){
+      const counts=downstreamCounts(job,this.io.now()),old=previous?downstreamCounts(previous,this.io.now()):new Map<string,BadgeCount>();let changed=false;
+      for(const name of new Set([...counts.keys(),...old.keys()])){
+        const key=profileText(`anc.badge-progress.v1.${name}`),saved=await this.io.get(key),count=counts.get(name);
+        if(count){
+          if(saved&&saved.updatedAt>job.updatedAt)continue;
+          if(saved?.id===job.id&&saved.count===count.count)continue;
+          await this.io.set(key,{...count,target:name,id:job.id,createdAt:job.createdAt});changed=true;
+        }else if(saved?.id===job.id){await this.io.set(key,null);changed=true;}
+      }
+      if(changed)await this.io.set(profileText('anc.cacheRevision'),{at:job.updatedAt,id:job.id});
+      this.badgeSynced.add(job.id);
+    }
+  }
+  async get(id:string):Promise<QueryResult|null>{const j=await this.io.get(jobKey(id));if(j?.status==='running'&&!this.active.has(id)){j.status='paused';j.message='后台任务已暂停，可继续查询';await this.save(j);}if(j?.scope==='downstream'&&!this.badgeSynced.has(id))await this.save(j,false);return j||null;}
   private cacheTail:Promise<unknown>=Promise.resolve();
   private async putCache(j:QueryResult){
     const key=cacheKey(j.marker,j.scope);const old=await this.io.get(key);
@@ -107,6 +125,10 @@ export class AncientEngine {
   }
   async getBadge(name:string):Promise<BadgeCount|null>{
     const cached=await this.getCached(name,'direct');let result=cached?knownDirectCount(cached,this.io.now()):null;
+    const configured=resolveTarget(name),known=await loadMatch(this.io,name);
+    const target=configured.target!==name?configured.target:known?.target||name;
+    const progress=await this.io.get(profileText(`anc.badge-progress.v1.${target}`));
+    if(progress?.target===target&&progress.count>0&&this.io.now()-progress.updatedAt<TTL&&(!result||progress.createdAt>result.updatedAt))result={count:progress.count,complete:false,updatedAt:progress.updatedAt};
     for(const scope of ['direct','downstream']){
       const id=await this.io.get(profileText(`anc.pending.fast4.${name}.${scope}`));const job=id?await this.io.get(jobKey(id)):null;
       if(!job||job.marker!==name||job.complete)continue;
@@ -248,9 +270,9 @@ export class AncientEngine {
       if(j.nodeSnps&&!j.mappingReady){
         const values=j.nodeSnps.filter(value=>needsSnpQuery(j.snpChecks,value));
         let reused=0,checkpointAt=0;
-        for(let offset=0;offset<values.length;offset+=2){
+        for(let offset=0;offset<values.length;offset+=4){
           if(c.signal.aborted)return;
-          const batch=await Promise.allSettled(values.slice(offset,offset+2).map(async value=>{
+          const batch=await Promise.allSettled(values.slice(offset,offset+4).map(async value=>{
             const key=`mofang.snp-search.v1.${value}`;
             const cached=!j.forceRefresh?await this.io.get(key):null;
             if(cached&&cached.check?.snp===value&&this.io.now()-cached.at<TTL){reused++;return rebaseSearch(cached.check,j.nodeSnps!);}
@@ -263,8 +285,8 @@ export class AncientEngine {
           if(c.signal.aborted)return;
           let failure:PromiseRejectedResult|undefined;
           for(const result of batch){if(result.status==='fulfilled')j.snpChecks=[...(j.snpChecks||[]).filter(v=>v.snp!==result.value.snp),result.value];else failure??=result;}
-          j.message=`正在核对节点SNP：${j.snpChecks?.length||0} / ${j.nodeSnps.length} · 本轮复用 ${reused} 条 · 最多2个请求`;
-          if(failure||offset+2>=values.length||this.io.now()-checkpointAt>=300){await this.save(j);checkpointAt=this.io.now();}
+          j.message=`正在核对节点SNP：${j.snpChecks?.length||0} / ${j.nodeSnps.length} · 本轮复用 ${reused} 条 · 最多4个请求`;
+          if(failure||offset+4>=values.length||this.io.now()-checkpointAt>=300){await this.save(j);checkpointAt=this.io.now();}
           if(failure)throw failure.reason;
           // Yield even on an all-cache batch so a large block cannot monopolize the worker.
           await new Promise(r=>setTimeout(r,0));
@@ -290,13 +312,26 @@ export class AncientEngine {
         catch(e){if(e instanceof SyncRequired||c.signal.aborted)throw e;j.failures.push({key,message:String(e)});j.queue.shift();}
         j.message=profileText(`已检查 ${j.checked.length} 个节点，发现 ${j.samples.length} 条古样本`);if(c.signal.aborted)return;await this.save(j);
       }
-      const pending=[...j.details];
-      for(const au of pending){
+      const pending=[...j.details];let detailCheckpoint=0;
+      for(let offset=0;offset<pending.length;offset+=2){
+        if(c.signal.aborted)return;
+        const ids=pending.slice(offset,offset+2);
+        const batch=await Promise.allSettled(ids.map(async au=>{
+          const s=[...j.samples,...j.unknown].find(s=>s.au===au);if(!s?.url)return null;
+          const key=profileText(`anc.detail.${au}`),cached=await this.io.get(key);
+          const fromCache=!j.forceRefresh&&cached&&this.io.now()-cached.at<TTL&&cached.url===s.url;
+          const detail=fromCache?cached.value:parseDetail(await this.request(s.url,c),s.url);
+          return {key,detail,fromCache:!!fromCache};
+        }));
+        if(c.signal.aborted)return;
+        let restricted:SyncRequired|undefined;
+        for(let i=0;i<ids.length;i++){
+        const au=ids[i];
         if(c.signal.aborted)return;const s=[...j.samples,...j.unknown].find(s=>s.au===au);if(!s)continue;
         if(!s.url){s.issue=s.issue||'缺少真实详情链接，请在TheYtree打开样本详情后同步';j.failures.push({key:au,message:s.issue});j.details=j.details.filter(a=>a!==au);continue;}
         try{
-          const key=profileText(`anc.detail.${au}`);const cached=await this.io.get(key);
-          const detail=!j.forceRefresh&&cached&&this.io.now()-cached.at<TTL&&cached.url===s.url?cached.value:parseDetail(await this.request(s.url,c),s.url);
+          const loaded=batch[i];if(loaded.status==='rejected')throw loaded.reason;if(!loaded.value)continue;
+          const {key,detail,fromCache}=loaded.value;
           if(detail.type==='modern') {j.samples=j.samples.filter(x=>x.au!==au);j.unknown=j.unknown.filter(x=>x.au!==au);j.excluded++;}
           else if(detail.type!==SAMPLE_KIND||!detail.sample||detail.sample.au!==au){s.issue='详情页类型或编号尚未确认';j.failures.push({key:au,message:s.issue});}
           else{
@@ -306,10 +341,16 @@ export class AncientEngine {
             else if(oldPeriod&&s.period&&oldPeriod!==s.period)s.issue=`树中年代原文：${oldPeriod}；详情页显示不同，保留对照`;
             if(s.tentative){j.samples=j.samples.filter(x=>x.au!==au);j.unknown=dedupe([...j.unknown,s]);}
             else if(s.type===SAMPLE_KIND&&j.unknown.some(x=>x.au===au)){j.unknown=j.unknown.filter(x=>x.au!==au);j.samples=dedupe([...j.samples,s]);}
-            await this.io.set(key,{at:this.io.now(),url:s.url,value:detail});
+            if(!fromCache)await this.io.set(key,{at:this.io.now(),url:s.url,value:detail});
           }
-        }catch(e){if(e instanceof SyncRequired||c.signal.aborted)throw e;s.issue=String(e);j.failures.push({key:au,message:s.issue});}
-        j.details=j.details.filter(x=>x!==au);j.message=profileText(`已确认 ${j.samples.length} 条古样本，剩余 ${j.details.length} 条详情`);if(c.signal.aborted)return;await this.save(j);
+        }catch(e){if(c.signal.aborted)throw e;if(e instanceof SyncRequired){restricted??=e;continue;}s.issue=String(e);j.failures.push({key:au,message:s.issue});}
+        j.details=j.details.filter(x=>x!==au);
+        }
+        j.message=profileText(`已确认 ${j.samples.length} 条古样本，剩余 ${j.details.length} 条详情 · 最多2条并行`);
+        if(c.signal.aborted)return;
+        if(restricted||offset+2>=pending.length||this.io.now()-detailCheckpoint>=300){await this.save(j);detailCheckpoint=this.io.now();}
+        if(restricted)throw restricted;
+        await new Promise(r=>setTimeout(r,0));
       }
       j.complete=!j.queue.length&&!j.details.length&&!j.failures.length&&!j.unknown.length;
       j.status=j.complete?'complete':'partial';j.message=j.complete?'查询完成（按源站可加载范围）':`已发现 ${j.samples.length} 条，结果尚不完整或有待核对记录`;

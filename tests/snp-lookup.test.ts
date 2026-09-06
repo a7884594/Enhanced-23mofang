@@ -10,7 +10,7 @@ test('SNP list reads only on expansion and selecting a name never submits a quer
   d.body.append(lookup.element);lookup.setMarker('O-MF109594');await tick();assert.equal(reads,0);
   lookup.element.open=true;await tick();assert.equal(reads,1);
   lookup.element.querySelector('form')!.addEventListener('submit',()=>submits++);
-  const tags=[...lookup.element.querySelectorAll<HTMLButtonElement>('.snp-options button')];assert.equal(tags.length,3);
+  const tags=[...lookup.element.querySelectorAll<HTMLButtonElement>('.snp-options button')];assert.deepEqual(tags.map(t=>t.textContent),['MF109594','MF109928','Y176322','MF109928']);
   tags.find(t=>t.textContent==='MF109928')!.click();assert.equal(lookup.element.querySelector<HTMLInputElement>('[name=snpname]')!.value,'MF109928');assert.equal(submits,0);
   lookup.element.open=false;await tick();lookup.element.open=true;await tick();assert.equal(reads,1);dom.window.close();
 });

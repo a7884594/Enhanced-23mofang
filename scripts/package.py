@@ -6,7 +6,7 @@ release = root / 'release'
 release.mkdir(exist_ok=True)
 version = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))['version']
 assert json.loads((root / 'package.json').read_text(encoding='utf-8'))['version'] == version
-bundle = release / f'23mofang-county-map-v{version}'
+bundle = release / f'enhanced-23mofang-v{version}'
 bundle.mkdir(exist_ok=True)
 shutil.copytree(root / 'dist', bundle / 'extension', dirs_exist_ok=True)
 shutil.copy2(root / 'README.md', bundle / '安装与使用说明.md')
@@ -16,21 +16,25 @@ shutil.copy2(root / 'assets' / 'letter-node-audit.md', bundle / '字母父系节
 shutil.copy2(root / 'assets' / 'sample-sources.md', bundle / '多源公开样本说明.md')
 shutil.copy2(root / 'assets' / 'mofang-snp-exploration.md', bundle / '23魔方SNP查询探索说明.md')
 shutil.copy2(root / 'assets' / 'yfull-letter-node-audit.md', bundle / 'YFull字母根节点核查.md')
+# Keep case-specific research in the source archive, not the installer.
+# Remove files left by an earlier packaging run of the same version.
+for name in ['YFull异名节点核查.md', 'yfull-b482-audit.json']:
+    (bundle / name).unlink(missing_ok=True)
 
-installer = release / f'23魔方区县地图-v{version}-安装包.zip'
+installer = release / f'enhanced-23mofang-v{version}-安装包.zip'
 with zipfile.ZipFile(installer, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for p in sorted(bundle.rglob('*')):
         if p.is_file():
             z.write(p, p.relative_to(bundle))
 
-source = release / f'23魔方区县地图-v{version}-源码.zip'
+source = release / f'enhanced-23mofang-v{version}-源码.zip'
 with zipfile.ZipFile(source, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for name in ['package.json', 'package-lock.json', 'tsconfig.json', 'manifest.json', '.gitignore', 'README.md', 'VALIDATION.md', 'src', 'scripts', 'tests', 'assets', 'test-results']:
         path = root / name
         entries = [path] if path.is_file() else sorted(path.rglob('*'))
         for p in entries:
             if p.is_file() and '__pycache__' not in p.parts:
-                z.write(p, Path('23mofang-county-map') / p.relative_to(root))
+                z.write(p, Path('enhanced-23mofang') / p.relative_to(root))
 
 with zipfile.ZipFile(installer) as z:
     assert z.testzip() is None

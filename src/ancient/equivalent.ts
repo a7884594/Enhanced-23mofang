@@ -43,10 +43,15 @@ export function disambiguate(checks:SnpCheck[],primary:string):SnpCheck[]{
   // two candidates that both contain the current primary name.
   const other=checks.filter(c=>c.candidate&&c.candidate.id!==winner.id);
   const descendants=new Set(checks.filter(c=>c.candidate?.id===winner.id).flatMap(c=>c.descendants||[]));
+  // A candidate whose subtree contains the winner is its upstream ancestor; a
+  // coarser 23mofang node can also carry some of that ancestor's SNP names.
+  const upstream=(c:SnpCheck)=>Array.isArray(c.descendants)&&c.descendants.includes(winner.marker);
   if(other.some(c=>!c.evidence||c.evidence.overlap.includes(snp(primary)||'')||
-    (!descendants.has(c.candidate!.marker)&&(c.evidence.overlap.length>=winner.overlap.length||c.evidence.overlap.some(s=>!winner.overlap.includes(s))))))return checks;
+    (!descendants.has(c.candidate!.marker)&&!upstream(c)&&(c.evidence.overlap.length>=winner.overlap.length||c.evidence.overlap.some(s=>!winner.overlap.includes(s))))))return checks;
   return checks.map(c=>c.candidate&&c.candidate.id!==winner.id?{...c,target:'',issue:'',note:descendants.has(c.candidate.marker)?
-    `两站树粒度不同：${c.candidate.marker} 已在源站树中确认为 ${winner.marker} 的下游；本节点按主标记别名对应 ${winner.marker}，该下游样本仅在“包含下游”中查询`:
+    `两站树粒度不同：${c.candidate.marker} 已在源站树中确认为 ${winner.marker} 的下游；本节点按主标记别名对应 ${winner.marker}，该下游样本仅在”包含下游”中查询`:
+    upstream(c)?
+    `两站树粒度不同：${c.candidate.marker} 已在源站树中确认为 ${winner.marker} 的上游；本节点按主标记别名对应 ${winner.marker}`:
     `搜索歧义：${c.candidate.marker} 的共同SNP不足以建立本节点对应；已按主标记别名及第二个共同突变对应 ${winner.marker}，未合并该候选样本`}:c);
 }
 export function dialogGroups(doc:Document,c:EquivalentCandidate):string[]|null {

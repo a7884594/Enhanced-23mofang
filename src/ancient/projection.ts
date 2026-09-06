@@ -1,6 +1,6 @@
 import {type QueryResult,type Branch,type AncientSample} from './model';
 function eligible(j:QueryResult){return j.complete&&j.scope==='downstream'&&!j.failures.length&&!j.queue.length&&!j.details.length&&!j.unknown.length&&j.samples.every(s=>s.detail&&!s.tentative);}
-function graph(j:QueryResult){
+export function graph(j:QueryResult){
   const roots=j.branches.filter(b=>b.marker===j.target&&!b.tentative);if(roots.length!==1)return [];
   const children=new Map<string,Branch[]>();for(const b of j.branches){const list=children.get(b.parent)||[];list.push(b);children.set(b.parent,list);}
   const seen=new Set<string>();const queue=[roots[0]],rows:Branch[]=[];

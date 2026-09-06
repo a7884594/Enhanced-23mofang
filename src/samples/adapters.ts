@@ -4,6 +4,19 @@ import {type Node,type Sample,rootName,snpTokens,text,treeLink} from './model';
 const node=(name:string,parent=''):Node=>({name,parent,snps:[],pending:false,samples:[],groups:[]});
 const sample=(id:string,url:string):Sample=>({id,url,kind:'unknown',name:'',region:'',period:'',culture:'',evidence:'类型未明确',uncertain:false});
 
+/** SNP discovery reads node headers only, not the major tree's sample records. */
+export function yfullSnpIndex(html:string):Pick<Node,'name'|'parent'|'snps'>[]{
+  const tree=parseHTML(html).document.querySelector('ul#tree');
+  if(!tree)throw Error('YFull未返回可读取的SNP索引，可能需要登录或稍后重试');
+  const entries:Pick<Node,'name'|'parent'|'snps'>[]=[];
+  for(const li of tree.querySelectorAll('li[id]')){
+    const name=text(li.querySelector(':scope > a')?.textContent,100);if(!rootName(name)||name.endsWith('*'))continue;
+    if(entries.length>=15000)throw Error('YFull大支系过大，未继续自动核对');
+    entries.push({name,parent:text(li.parentElement?.closest('li[id]')?.querySelector(':scope > a')?.textContent,100),snps:snpTokens([li.querySelector(':scope > .yf-snpforhg')?.textContent,li.querySelector(':scope > .yf-plus-snps')?.getAttribute('title')].join(' '))});
+  }
+  return entries;
+}
+
 /** Parse only visible tree fields; never execute scripts or infer personal status from an ID prefix. */
 export function yfull(html:string):Node[]{
   const d=parseHTML(html).document,tree=d.querySelector('ul#tree');if(!tree)throw Error('YFull树内容缺失，可能需要打开原页或稍后重试');

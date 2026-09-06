@@ -2,10 +2,11 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {createRequire} from 'node:module';
+import {CHANNEL} from '../src/model';
 const require=createRequire(import.meta.url);
 const {JSDOM}=require('jsdom');
 const compiled=(await build({entryPoints:['src/bridge.ts'],bundle:true,write:false,format:'iife'})).outputFiles[0].text;
-function harness(){
+function harness(active=true){
   const dom=new JSDOM('<main></main>',{url:'https://www.23mofang.com/ancestry/ytree/O-CTS7316/branch',runScripts:'outside-only',pretendToBeVisual:true});
   const w=dom.window as any;const events:any[]=[];const guards:Function[]=[];const after:Function[]=[];let poll=()=>{};
   w.postMessage=(m:any)=>events.push(m.snapshot);
@@ -14,8 +15,15 @@ function harness(){
   const vm:any={$data:{branchData:branch},branchData:branch,$el:w.document.querySelector('main'),$route:{path:w.location.pathname,fullPath:w.location.pathname},$children:[],filterParams:{}};
   w.$nuxt={$children:[vm],$router:{beforeEach:(f:Function)=>guards.push(f),afterEach:(f:Function)=>after.push(f)}};
   w.eval(compiled);
+  if(active)w.dispatchEvent(new w.MessageEvent('message',{source:w,origin:w.location.origin,data:{channel:CHANNEL,type:'request'}}));
   return {dom,w,events,guards,after,vm,poll:()=>poll(),last:()=>events.at(-1)};
 }
+test('disabled map bridge stays dormant until the content script requests data',()=>{
+  const h=harness(false);h.poll();h.w.dispatchEvent(new h.w.Event('pageshow'));h.w.dispatchEvent(new h.w.Event('popstate'));
+  assert.deepEqual(h.events,[]);assert.equal(h.guards.length,0);
+  h.w.dispatchEvent(new h.w.MessageEvent('message',{source:h.w,origin:h.w.location.origin,data:{channel:CHANNEL,type:'request'}}));
+  assert.equal(h.last().status,'ready');h.dom.window.close();
+});
 test('bridge emits only whitelisted geographical summary',()=>{
   const h=harness();assert.equal(h.last().status,'ready');assert.equal(h.last().items[0].childItems[0].childItems[0].percent,.125);
   assert.ok(!JSON.stringify(h.events).includes('never-export'));h.dom.window.close();

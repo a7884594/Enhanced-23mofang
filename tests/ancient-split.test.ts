@@ -40,3 +40,23 @@ test('sync verifies split targets, direct returns AU40111 and successful match i
   assert.equal(j.complete,true);assert.deepEqual(j.samples.map(s=>s.au),['AU40111']);assert.equal(j.samples[0].period,'汉末');
   assert.equal((await engine.start(f.marker,'direct',false)).matchReused,true);
 });
+test('primary name on a descendant resolves when the node also carries upstream ancestor SNPs',()=>{
+  // Coarser 23mofang node: its SNP block splits across a TheYtree ancestor and
+  // its descendant, with the primary name sitting on the descendant.
+  const branches=[
+    {hid:26524,parent:31566,name:'O-FTB26869',equivalent_mutations:{equivalent_count:2}},
+    {hid:52866,parent:26524,name:'O-TYT168883',equivalent_mutations:{equivalent_count:2}},
+  ];
+  const raw=(rows:any[])=>({code:1,data:{ytree:rows}});
+  const local=['MF159349','MF159747','MF159324','MF161210'];
+  const search=(s:string)=>normalizeTree(raw(s==='MF159324'||s==='MF161210'?branches.slice(1):branches));
+  let checks=local.map(s=>checkSnp(search(s),s,local));
+  const ancestor={id:'26524',marker:'O-FTB26869',count:2};
+  const descendant={id:'52866',marker:'O-TYT168883',count:2};
+  checks=applyEquivalent(checks,equivalentEvidence(ancestor,['TYT14605/MF159349','TYT51252/MF159747'],local,1,'visible-dialog'));
+  checks=applyEquivalent(checks,equivalentEvidence(descendant,['TYT168883/MF161210','TYT92183/MF159324'],local,1,'visible-dialog'));
+  assert.equal(mappingTarget(checks),'');
+  const resolved=disambiguate(checks,'O-MF159324');
+  assert.equal(mappingTarget(resolved),'O-TYT168883');
+  assert.ok(resolved.filter(c=>c.candidate?.id==='26524').every(c=>c.note?.includes('上游')&&c.target===''));
+});
