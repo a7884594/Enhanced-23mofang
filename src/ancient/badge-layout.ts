@@ -10,7 +10,7 @@ export function badgePosition(node:SVGGElement,button:SVGGElement,research:boole
   const half=height*Math.abs(matrix.d||1)/2;
   let right=bounds?.width?bounds.right:matrix.e;
   for(const child of node.children){
-    if(child===button||child.hasAttribute('data-mofang-ancient')||child.hasAttribute('data-mofang-research'))continue;
+    if(child===button||child.hasAttribute('data-mofang-ancient')||child.hasAttribute('data-mofang-research')||child.hasAttribute('data-mofang-multi'))continue;
     const box=child.getBoundingClientRect();
     if(!box.width||!box.height||box.bottom<=center-half||box.top>=center+half)continue;
     const style=node.ownerDocument.defaultView?.getComputedStyle(child);if(style?.visibility==='hidden'||style?.display==='none')continue;

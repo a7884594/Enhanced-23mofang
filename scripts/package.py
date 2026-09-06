@@ -13,6 +13,7 @@ shutil.copy2(root / 'README.md', bundle / '安装与使用说明.md')
 shutil.copy2(root / 'VALIDATION.md', bundle / '验证记录.md')
 shutil.copy2(root / 'assets' / 'region-coverage.md', bundle / '行政区域补图核查.md')
 shutil.copy2(root / 'assets' / 'letter-node-audit.md', bundle / '字母父系节点核查.md')
+shutil.copy2(root / 'assets' / 'sample-sources.md', bundle / '多源公开样本说明.md')
 
 installer = release / f'23魔方区县地图-v{version}-安装包.zip'
 with zipfile.ZipFile(installer, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
@@ -35,7 +36,8 @@ with zipfile.ZipFile(installer) as z:
     assert manifest['manifest_version'] == 3
     assert 'extension/' + manifest['background']['service_worker'] in z.namelist()
     assert manifest['permissions'] == ['storage']
-    assert manifest['host_permissions'] == ['https://www.theytree.com/*']
+    assert manifest['host_permissions'] == ['https://www.theytree.com/*', 'https://www.yfull.com/*', 'https://discover.familytreedna.com/*']
+    assert 'extension/samples/background.js' in z.namelist()
     for script in manifest['content_scripts']:
         for name in script['js']:
             assert 'extension/' + name in z.namelist()

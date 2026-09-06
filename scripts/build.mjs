@@ -6,6 +6,8 @@ await build({entryPoints:['src/content.ts','src/bridge.ts','src/ancient/ui.ts','
 await build({entryPoints:['src/ancient/ui.ts','src/ancient/mofang-bridge.ts','src/ancient/background.ts','src/ancient/source.ts','src/ancient/source-bridge.ts'],outdir:'dist/research',outbase:'src/ancient',define:{__RESEARCH__:'true'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
 // One classic MV3 worker, two isolated message handlers, one shared request gate.
 await appendFile('dist/ancient/background.js','\nimportScripts("../research/background.js");\n');
+await build({entryPoints:['src/samples/ui.ts','src/samples/background.ts'],outdir:'dist/samples',outbase:'src/samples',define:{__RESEARCH__:'false'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
+await appendFile('dist/ancient/background.js','\nimportScripts("../samples/background.js");\n');
 await copyFile('manifest.json','dist/manifest.json');
 await copyFile('assets/counties.geo.json','dist/assets/counties.geo.json');
 await copyFile('assets/map-provenance.json','dist/assets/map-provenance.json');
