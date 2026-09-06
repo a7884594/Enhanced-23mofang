@@ -2,7 +2,7 @@ import {SAMPLE_KIND} from './profile';
 import {profileText} from './profile';
 import {TY,TTL,marker,sourceUrl,queryUrl,nodeUrl,normalizeTree,selectSamples,pathToRoot,dedupe,fresh,type QueryResult,type TreePage,type AncientSample} from './model';
 import {parseDetail} from './parser';
-import {snps,checkSnp,snpUrl,mappingTarget} from './snps';
+import {snps,checkSnp,snpUrl,mappingTarget,needsSnpQuery} from './snps';
 import {equivalentEvidence,applyEquivalent,disambiguate,type EquivalentEvidence} from './equivalent';
 import {directProjections,subtreeProjection} from './projection';
 import {knownDirectCount,type BadgeCount} from './counts';
@@ -210,7 +210,7 @@ export class AncientEngine {
       j.status='running';
       if(j.nodeSnps&&!j.mappingReady){
         for(const value of j.nodeSnps){
-          if(j.snpChecks?.some(v=>v.snp===value))continue;
+          if(!needsSnpQuery(j.snpChecks,value))continue;
           const key=profileText(`anc.snp3.${j.nodeSnps.join(',')}.${value}`);
           const cached=await this.io.get(key);
           let check;
@@ -222,7 +222,7 @@ export class AncientEngine {
             if(!check.issue)await this.io.set(key,{at:this.io.now(),check});
           }
           if(c.signal.aborted)return;
-          (j.snpChecks??=[]).push(check);
+          j.snpChecks=[...(j.snpChecks||[]).filter(v=>v.snp!==value),check];
           j.message=`正在核对节点SNP：${j.snpChecks.length} / ${j.nodeSnps.length}`;
           if(c.signal.aborted)return;await this.save(j);
         }

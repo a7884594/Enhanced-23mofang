@@ -3,12 +3,26 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseHTML} from 'linkedom';
 import {AncientEngine,type IO} from '../src/ancient/engine';
-import {checkSnp,mappingTarget} from '../src/ancient/snps';
+import {checkSnp,mappingTarget,needsSnpQuery} from '../src/ancient/snps';
 import {equivalentEvidence,applyEquivalent,disambiguate,dialogGroups} from '../src/ancient/equivalent';
 import {parseDetail} from '../src/ancient/parser';
 const read=(n:string)=>JSON.parse(readFileSync(`tests/fixtures/ancient/${n}.json`,'utf8'));
 const fixture=read('MF190013-searches'),ft=read('FT130664-equivalent'),by=read('BY136818-equivalent');
 const checks=()=>fixture.searches.map((r:any)=>checkSnp(r.page,r.snp,fixture.nodeSnps));
+const annotated=read('MF15505-equivalent');
+test('MF15505 matches Z44059 using plain aliases while preserving unused (T) markers',()=>{
+ const e=equivalentEvidence(annotated.candidate,annotated.groups,annotated.local,Date.now(),'visible-dialog');
+ assert.deepEqual(e.overlap,['MF15505','MF170687','ZS3220']);assert.deepEqual(e.ignored,['Z46519(T)','TY478604(T)']);assert.deepEqual(e.groups,annotated.groups);assert.ok(!e.snps.includes('Z46519'));
+ const records=annotated.local.map((s:string)=>({snp:s,target:'',issue:['MF15505','MF170687','ZS3220'].includes(s)?'待核对':'',url:'',candidate:s==='ZS3220'?annotated.other.candidate:['MF15505','MF170687'].includes(s)?annotated.candidate:undefined}));
+ const other=equivalentEvidence(annotated.other.candidate,annotated.other.groups,annotated.local,Date.now(),'visible-dialog');
+ const resolved=disambiguate(applyEquivalent(applyEquivalent(records,e),other),annotated.marker);
+ assert.equal(mappingTarget(resolved),'O-Z44059');assert.ok(resolved.find(c=>c.snp==='ZS3220')?.note);
+});
+test('annotations alone never become SNP matching evidence; incomplete old checks can retry',()=>{
+ assert.throws(()=>equivalentEvidence({id:'34',marker:'O-Z44059',count:1},['MF15505(T)'],annotated.local,0,'visible-dialog'));
+ assert.equal(needsSnpQuery([{snp:'ZS3220',target:'',issue:'待核对',url:''}],'ZS3220'),true);
+ assert.equal(needsSnpQuery([{snp:'ZS3220',target:'',issue:'待核对',url:'',candidate:annotated.other.candidate}],'ZS3220'),false);
+});
 const evidence=(f:any)=>equivalentEvidence(f.candidate,f.groups,fixture.nodeSnps,Date.now(),'visible-dialog');
 test('real logged-in slash aliases establish MF190013 and Y86790 overlap',()=>{
  const e=evidence(ft);assert.deepEqual(e.overlap,['MF190013','Y86790']);assert.ok(e.snps.includes('TYT278842'));assert.equal(e.groups.length,2);

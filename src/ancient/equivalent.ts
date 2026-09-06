@@ -1,19 +1,29 @@
 import {snp,snps,type SnpCheck} from './snps';
 import {TY,marker} from './model';
 export interface EquivalentCandidate {id:string;marker:string;count?:number}
-export interface EquivalentEvidence {id:string;marker:string;groups:string[];snps:string[];overlap:string[];url:string;capturedAt:number;method:'authenticated-page'|'visible-dialog'}
+export interface EquivalentEvidence {id:string;marker:string;groups:string[];snps:string[];overlap:string[];ignored?:string[];url:string;capturedAt:number;method:'authenticated-page'|'visible-dialog'}
 export const equivalentUrl=(c:EquivalentCandidate)=>`${TY}/api/ysnp/theytree/getEquivalentMutationsDetail?hid=${encodeURIComponent(c.id)}&haplogroup=${encodeURIComponent(c.marker)}`;
 export function equivalentEvidence(c:EquivalentCandidate,groups:unknown,local:string[],at:number,method:EquivalentEvidence['method']):EquivalentEvidence {
   if(!/^\d+$/.test(c.id)||!marker(c.marker)||!Array.isArray(groups)||groups.length>10000)throw Error('等价SNP列表格式错误');
   if(c.count!=null&&c.count!==groups.length)throw Error('等价SNP数量与树节点不一致，请刷新源站树后重试');
   // Each slash group is a set of names for the same mutation, not a SNP range.
-  const tokens:string[]=[];
+  const tokens:string[]=[],ignored:string[]=[];
   for(const g of groups){
     if(typeof g!=='string'||g.length>1000)throw Error('等价SNP字段格式错误');
-    for(const part of g.split('/')){const value=snp(part);if(!value||part.includes('?')||part.includes('#'))throw Error('等价SNP名称尚不能确认');tokens.push(value);}
+    for(const raw of g.split('/')){
+      const part=raw.trim();
+      if(part.includes('?')||part.includes('#'))throw Error('等价SNP名称尚不能确认');
+      const value=snp(part);
+      if(value){tokens.push(value);continue;}
+      // Do not guess what (T) or another annotation means, or strip it to create
+      // evidence. Preserve the exact token, and continue with plain SNP aliases.
+      if(/^[A-Z][A-Z0-9._]*\d[A-Z0-9._]*\([A-Z0-9_-]+\)$/i.test(part)){ignored.push(part);continue;}
+      throw Error('等价SNP名称尚不能确认');
+    }
   }
+  if(groups.length&&!tokens.length)throw Error('等价列表只有带注释的标记，尚无可用于核对的明确SNP');
   const values=snps([c.marker,...tokens]);
-  return {id:c.id,marker:c.marker,groups:groups.slice(),snps:values,overlap:values.filter(s=>local.includes(s)),url:equivalentUrl(c),capturedAt:at,method};
+  return {id:c.id,marker:c.marker,groups:groups.slice(),snps:values,overlap:values.filter(s=>local.includes(s)),ignored,url:equivalentUrl(c),capturedAt:at,method};
 }
 export function applyEquivalent(checks:SnpCheck[],e:EquivalentEvidence):SnpCheck[]{
   return checks.map(c=>c.candidate?.id===e.id&&c.candidate.marker===e.marker?{...c,target:e.overlap.length?e.marker:'',issue:e.overlap.length?'':'两站节点SNP列表没有共同标记，未确认对应',evidence:e}:c);

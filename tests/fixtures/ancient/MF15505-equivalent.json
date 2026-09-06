@@ -1,0 +1,10 @@
+{
+  "observedDate":"2026-09-06",
+  "sources":["https://www.23mofang.com/ancestry/ytree/O-MF15505","https://www.theytree.com/tree/O-Z44059","https://www.theytree.com/tree/O-F17561"],
+  "provenance":"MF15505 local SNPs and Z44059 groups supplied by user; candidate ids/counts verified with public SNP queries; F17561 groups read from normal logged-in source dialog.",
+  "marker":"O-MF15505",
+  "local":["BY49194","MF15505","MF170687","MF461787","ZS3220"],
+  "candidate":{"id":"34","marker":"O-Z44059","count":6},
+  "groups":["Z46519(T)","TY478604(T)","APS1885","TYT65204/MF170687","Z44059/TYT193670/MF15505","ZS3220"],
+  "other":{"candidate":{"id":"25259","marker":"O-F17561","count":11},"groups":["FT88592","F17561","Y127077","FGC26004/V5176","FT150938","F18914","ZS3220","F22743","F24584","TYT160704/MF52166","F25331"]}
+}

@@ -7,6 +7,10 @@ export function snp(v:unknown):string|null {
 export function snps(v:unknown):string[]{return Array.isArray(v)?[...new Set(v.map(snp).filter((s):s is string=>!!s))].sort():[];}
 export const snpUrl=(s:string)=>`${TY}/api/ysnp/theytree/?snp=${encodeURIComponent(s)}`;
 export interface SnpCheck {snp:string;target:string;issue:string;url:string;note?:string;candidate?:import('./equivalent').EquivalentCandidate;evidence?:import('./equivalent').EquivalentEvidence}
+export function needsSnpQuery(checks:SnpCheck[]|undefined,value:string):boolean {
+  const check=checks?.find(c=>c.snp===value);
+  return !check||!!check.issue&&!check.candidate;
+}
 // Search may return the default world tree for unknown SNPs. Never accept its
 // first row or an ancestor as an alias. Require a unique subtree root whose
 // primary SNP is explicitly present in the clicked node's LOCAL rsids list.

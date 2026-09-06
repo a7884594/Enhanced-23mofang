@@ -55,6 +55,7 @@ export function bootAncientUI(){
     const info=document.createElement('p');info.textContent=`23魔方本节点SNP：${j.nodeSnps?.join(', ')||'尚未读取'}（已核对 ${j.snpChecks?.length??0} / ${j.nodeSnps?.length??0}）`;evidence.append(info);
     for(const c of j.snpChecks||[]){const row=document.createElement('p');row.textContent=`${c.snp} → ${c.target||c.candidate?.marker&&('候选 '+c.candidate.marker)||'未确认对应'}${c.issue?' · '+c.issue:''} `;link(row,'查询依据',`${TY}/tree/${encodeURIComponent(c.target||j.marker)}?snp=${encodeURIComponent(c.snp)}`);evidence.append(row);
       if(c.evidence){const detail=document.createElement('p');detail.textContent=`TheYtree等价SNP：${c.evidence.groups.join(', ')}；共同SNP：${c.evidence.overlap.join(', ')||'无'}；读取时间：${new Date(c.evidence.capturedAt).toLocaleString()}`;evidence.append(detail);}
+      if(c.evidence?.ignored?.length){const note=document.createElement('p');note.className='issue';note.textContent=`带注释标记保留原文、未参与匹配：${c.evidence.ignored.join(', ')}`;evidence.append(note);}
       if(c.note){const note=document.createElement('p');note.className='issue';note.textContent=c.note;evidence.append(note);}
     }
     const failures=q('.failures > div');failures.replaceChildren();for(const f of j.failures){const row=document.createElement('p');row.textContent=`${f.key}：${f.message}`;failures.append(row);}q('.failures').hidden=!j.failures.length;
