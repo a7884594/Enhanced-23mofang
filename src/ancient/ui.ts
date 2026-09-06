@@ -1,5 +1,6 @@
 import {profileText,RESEARCH} from './profile';
 import {badgePosition} from './badge-layout';
+import {createSnpLookup} from './snp-lookup';
 import {formationAge,showAncientEntry,analysisAge} from './age';
 import {knownDirectCount,type BadgeCount} from './counts';
 import {paintAncientBadge,paintAnalysisEntry} from './badge';
@@ -28,6 +29,8 @@ export function bootAncientUI(){
   const nodeLink=document.createElement('a');nodeLink.className='node-link';nodeLink.target='_blank';nodeLink.rel='noopener noreferrer';nodeLink.textContent='TheYtree 对应节点（待确认）';nodeLink.setAttribute('aria-disabled','true');
   nodeLink.style.cssText='display:inline-block;margin-top:8px;padding:4px 9px;border:1px solid #d8c9af;border-radius:6px;background:#fffdf9;font-size:12px;text-decoration:none;overflow-wrap:anywhere';
   nodeLink.onclick=e=>{if(!nodeLink.hasAttribute('href'))e.preventDefault();};q('.mapping').after(nodeLink);
+  const lookup=createSnpLookup(document);q('.filters').after(lookup.element);
+  const lookupStyle=document.createElement('style');lookupStyle.textContent='.snp-lookup{padding:0 18px;border-bottom:1px solid #eee6d8}.snp-lookup form{display:flex;gap:6px}.snp-lookup input:not([type=hidden]){min-width:0;flex:1;border:1px solid #ddd4c5;border-radius:6px;padding:5px 8px}.snp-lookup button{flex-shrink:0;border:1px solid #d8c9af;border-radius:6px;background:white;color:#725937;padding:5px 8px}.snp-lookup p{font-size:11px;color:#887761;margin:7px 0 10px}';shadow.append(lookupStyle);
   const responsive=document.createElement('style');responsive.textContent=RESPONSIVE;shadow.append(responsive);
   const note=q('.caution');const noteText=RESEARCH?'只收录TheYtree明确标记为科研的样本，个人与古人样本排除。挂载和下游范围以TheYtree为准。':note.textContent;const notes=document.createElement('details');notes.className='caution';const noteTitle=document.createElement('summary');noteTitle.textContent='口径说明';const noteBody=document.createElement('p');noteBody.textContent=noteText;notes.append(noteTitle,noteBody);note.replaceWith(notes);
   if(RESEARCH){q<HTMLSelectElement>('select[aria-label="年代排序"]').hidden=true;q<HTMLInputElement>('input').placeholder='搜索编号、名称、来源';}
@@ -80,7 +83,7 @@ export function bootAncientUI(){
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
     try{const name=selected,range=scope;const values=useSnps?await readSnps(name):undefined;if(token!==serial)return;const j=await api({type:profileText('anc.start'),marker:name,scope:range,refresh,snps:values});if(token===serial)update(j);else void api({type:profileText('anc.cancel'),id:j.id}).catch(()=>{});}catch(e){if(token===serial){set('.empty',String(e));set('.progress',profileText('查询失败，不代表没有古样本'));}}finally{if(token===serial)busy=false;}
   }
-  function open(name:string){const m=marker(name);if(!m)return;document.dispatchEvent(new CustomEvent('mofang-sample-panel-open',{detail:RESEARCH?'research':'ancient'}));priorFocus=document.activeElement;selected=m;scope='direct';q('.panel').hidden=false;q<HTMLInputElement>('input').value='';void query();q('.close').focus();}
+  function open(name:string){const m=marker(name);if(!m)return;document.dispatchEvent(new CustomEvent('mofang-sample-panel-open',{detail:RESEARCH?'research':'ancient'}));priorFocus=document.activeElement;selected=m;lookup.setMarker(m);scope='direct';q('.panel').hidden=false;q<HTMLInputElement>('input').value='';void query();q('.close').focus();}
   function close(){q('.panel').hidden=true;serial++;if(job&&['running','sync'].includes(job.status))void api({type:profileText('anc.cancel'),id:job.id}).catch(()=>{});if(priorFocus instanceof HTMLElement||priorFocus instanceof SVGElement)(priorFocus as HTMLElement).focus?.();}
   document.addEventListener('mofang-sample-panel-open',event=>{if((event as CustomEvent).detail!==(RESEARCH?'research':'ancient')&&!q('.panel').hidden)close();});
   q('.close').onclick=close;document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!q('.panel').hidden)close();});

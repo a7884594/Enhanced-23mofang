@@ -1,5 +1,11 @@
 # 验证记录
 
+## 1.3.6 手动SNP入口
+
+- 两种侧栏共用普通GET表单，action固定为用户提供的https://www.theytree.com/user/ysnp/snps，参数snpname、hg38、t2t2；新标签页noopener/noreferrer。仅用户提交时导航，代码不发起网络请求或后台消息。
+- 默认仅从当前节点文本提取SNP，纯字母留空，切换节点重置输入；与现有样本搜索框分离，折叠表单默认收起。TypeScript检查及现有自动回归通过。
+- 未提交真实个人中心查询或读取个人中心数据；入口依据用户提供的URL与截图实现。
+
 ## 1.3.5 字母根节点
 
 - 真实网站：读取23魔方A—T全部20个入口的标题，记录实际节点名称；在正常登录TheYtree页面逐个展开B、C、F、I、J、K、N、O的等价SNP列表，核对8组主标记。O含F175，K含L469/PF5499/M2689，N含Page91/M231/PAGES00091；其余证据见assets/letter-node-audit.md。不保存会话凭据。
