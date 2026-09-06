@@ -2,6 +2,7 @@ import {TY,TTL,marker,sourceUrl,queryUrl,nodeUrl,normalizeTree,selectSamples,pat
 import {parseDetail} from './parser';
 import {snps,checkSnp,snpUrl,mappingTarget} from './snps';
 import {equivalentEvidence,applyEquivalent,disambiguate,type EquivalentEvidence} from './equivalent';
+import {directProjections,subtreeProjection} from './projection';
 import {resolveTarget} from './aliases';
 export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Promise<void>;request(url:string,signal:AbortSignal):Promise<{status:number;url:string;body:string}>;now():number;id():string}
 export class SyncRequired extends Error{}
@@ -25,11 +26,51 @@ export class RequestGate {
 export class AncientEngine {
   private active=new Map<string,AbortController>();
   constructor(private io:IO){}
-  async save(job:QueryResult){job.updatedAt=this.io.now();await this.io.set(jobKey(job.id),job);if(!job.complete&&job.status!=='unmatched')await this.io.set(`anc.pending.fast4.${job.marker}.${job.scope}`,job.id);}
+  async save(job:QueryResult,touch=true){if(touch)job.updatedAt=this.io.now();await this.io.set(jobKey(job.id),job);if(!job.complete&&job.status!=='unmatched')await this.io.set(`anc.pending.fast4.${job.marker}.${job.scope}`,job.id);}
   async get(id:string):Promise<QueryResult|null>{const j=await this.io.get(jobKey(id));if(j?.status==='running'&&!this.active.has(id)){j.status='paused';j.message='后台任务已暂停，可继续查询';await this.save(j);}return j||null;}
+  private cacheTail:Promise<unknown>=Promise.resolve();
+  private async putCache(j:QueryResult){
+    const key=cacheKey(j.marker,j.scope);const old=await this.io.get(key);
+    if(!old||old.updatedAt<=j.updatedAt)await this.io.set(key,j);
+  }
+  private async cacheResult(j:QueryResult){
+    const work=this.cacheTail.catch(()=>{}).then(async()=>{
+      if(!j.complete)return;
+      if(j.scope==='downstream'&&j.projectedVersion!==1){
+        let count=0;
+        for(const child of directProjections(j)){
+          await this.putCache(child);count++;
+          if(child.target===j.target&&j.marker!==j.target)await this.putCache({...child,marker:j.marker,nodeSnps:j.nodeSnps,snpChecks:j.snpChecks,mapping:j.mapping,mappingVerifiedAt:j.mappingVerifiedAt??j.updatedAt});
+        }
+        j.cachedChildren=Math.max(0,count-1);j.projectedVersion=1;
+      }
+      await this.putCache(j);
+      await this.io.set('anc.cacheRevision',{at:j.updatedAt,id:j.id});
+    });this.cacheTail=work;await work;
+  }
+  async getCached(name:string,scope:'direct'|'downstream'):Promise<QueryResult|null>{
+    const now=this.io.now();let current:QueryResult|null=await this.io.get(cacheKey(name,scope))||null;
+    const direct:QueryResult|null=scope==='direct'?current:await this.io.get(cacheKey(name,'direct'))||null;
+    const alias=direct&&direct.target!==name?direct:null;
+    const mappingValid=!alias||now-(alias.mappingVerifiedAt??alias.updatedAt)<TTL;
+    if(!mappingValid)return null;
+    const target=alias?.target||name;
+    const canonical:QueryResult|null=alias?await this.io.get(cacheKey(target,'direct'))||null:direct;
+    let replacement:QueryResult|null=null;
+    if(scope==='direct'&&alias&&canonical&&fresh(canonical,now)&&(!current||canonical.updatedAt>current.updatedAt))replacement=canonical;
+    if(scope==='downstream'&&canonical?.cacheOrigin){
+      const origin=canonical.cacheOrigin;const ancestor=await this.io.get(cacheKey(origin.marker,'downstream'));
+      if(ancestor&&fresh(ancestor,now)&&ancestor.updatedAt===origin.at&&(!current||ancestor.updatedAt>current.updatedAt))replacement=subtreeProjection(ancestor,target);
+    }
+    if(replacement){
+      current={...replacement,marker:name,...(alias?{nodeSnps:alias.nodeSnps,snpChecks:alias.snpChecks,mapping:alias.mapping,mappingVerifiedAt:alias.mappingVerifiedAt??alias.updatedAt}:{})};
+      await this.putCache(current);
+    }
+    return current&&fresh(current,now)?current:null;
+  }
   async start(name:string,scope:'direct'|'downstream',refresh=false,values?:unknown):Promise<QueryResult>{
     const m=marker(name);if(!m)throw Error('无效支系标记');const nodeSnps=values===undefined?undefined:snps(values);if(nodeSnps&&!nodeSnps.length)throw Error('尚未读取到节点SNP列表，请等待树加载后重试');
-    if(!refresh){const cached=await this.io.get(cacheKey(m,scope));if(cached&&fresh(cached,this.io.now())&&(values===undefined||JSON.stringify(cached.nodeSnps)===JSON.stringify(nodeSnps))){const copy={...cached,id:this.io.id(),cached:true};await this.io.set(jobKey(copy.id),copy);return copy;}}
+    if(!refresh){const cached=await this.getCached(m,scope);if(cached&&fresh(cached,this.io.now())&&(values===undefined||JSON.stringify(cached.nodeSnps)===JSON.stringify(nodeSnps))){if(cached.scope==='downstream'&&cached.projectedVersion!==1)await this.cacheResult(cached);const copy={...cached,id:this.io.id(),cached:true};await this.io.set(jobKey(copy.id),copy);return copy;}}
     const resolved=resolveTarget(m);
     if(!refresh){
       const pendingId=await this.io.get(`anc.pending.fast4.${m}.${scope}`);const pending=pendingId?await this.io.get(jobKey(pendingId)):null;
@@ -130,7 +171,7 @@ export class AncientEngine {
     const j:QueryResult=await this.io.get(jobKey(id));if(!j||j.status==='paused')return j;
     if(error)j.failures.push({key:'web-sync',message:error});
     j.complete=!j.queue.length&&!j.details.length&&!j.failures.length&&!j.unknown.length;
-    j.status=j.complete?'complete':'partial';j.message=j.complete?'网页同步完成（按源站可加载范围）':'已读取网页，结果尚不完整；可展开源站树后重新同步';await this.save(j);if(j.complete)await this.io.set(cacheKey(j.marker,j.scope),j);return j;
+    j.status=j.complete?'complete':'partial';j.message=j.complete?'网页同步完成（按源站可加载范围）':'已读取网页，结果尚不完整；可展开源站树后重新同步';j.updatedAt=this.io.now();if(j.complete)await this.cacheResult(j);await this.save(j,false);return j;
   }
   private async request(url:string,c:AbortController){const r=await this.io.request(url,c.signal);if(c.signal.aborted)throw new DOMException('Cancelled','AbortError');if([401,403,429].includes(r.status)||r.url.includes('/user/login'))throw new SyncRequired('源站访问受限，请打开TheYtree正常网页同步');if(r.status!==200)throw Error(`源站返回 HTTP ${r.status}`);if(new URL(r.url).origin!==TY)throw Error('源站跳转到了未授权域名');return r.body;}
   async run(id:string){
@@ -201,8 +242,7 @@ export class AncientEngine {
       }
       j.complete=!j.queue.length&&!j.details.length&&!j.failures.length&&!j.unknown.length;
       j.status=j.complete?'complete':'partial';j.message=j.complete?'查询完成（按源站可加载范围）':`已发现 ${j.samples.length} 条，结果尚不完整或有待核对记录`;
-      await this.save(j);
-      if(j.complete)await this.io.set(cacheKey(j.marker,j.scope),j);
+      j.updatedAt=this.io.now();if(j.complete)await this.cacheResult(j);if(c.signal.aborted)return;await this.save(j,false);
     }catch(e){if(c.signal.aborted)return;j.complete=false;j.status=e instanceof SyncRequired?'sync':'error';j.message=e instanceof Error?e.message:String(e);await this.save(j);}
     finally{if(this.active.get(id)===c)this.active.delete(id);}
   }

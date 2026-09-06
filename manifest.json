@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "23魔方 · 地域地图与古DNA",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "全国区县/市级频率地图，节点古DNA查询、TheYtree来源核对与本地缓存。",
   "permissions": ["storage"],
   "host_permissions": ["https://www.theytree.com/*"],

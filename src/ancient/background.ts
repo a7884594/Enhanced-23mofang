@@ -33,7 +33,7 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
       if(message.type==='anc.start'){
         return startForTab(tab,message);
       }
-      if(message.type==='anc.counts'){const result:any={};for(const value of (Array.isArray(message.markers)?message.markers:[]).slice(0,600)){const m=marker(value);if(!m)continue;const c=await get(cacheKey(m,'direct'));if(c&&fresh(c))result[m]=summary(c);}return result;}
+      if(message.type==='anc.counts'){const result:any={};for(const value of (Array.isArray(message.markers)?message.markers:[]).slice(0,600)){const m=marker(value);if(!m)continue;const c=await engine.getCached(m,'direct');if(c&&fresh(c))result[m]=summary(c);}return result;}
       const id=await owned(message.id,sender);
       if(message.type==='anc.get')return engine.get(id);
       if(message.type==='anc.cancel')return engine.pause(id);

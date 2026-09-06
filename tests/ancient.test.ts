@@ -4,7 +4,8 @@ import {readFileSync} from 'node:fs';
 import {normalizeTree,selectSamples,pathToRoot,dated,sourceUrl,marker,fresh,TTL,type TreePage,type QueryResult} from '../src/ancient/model.ts';
 import {parseDetail,parseTreeDOM} from '../src/ancient/parser.ts';
 import {resolveTarget} from '../src/ancient/aliases.ts';
-import {AncientEngine,RequestGate,jobKey,type IO} from '../src/ancient/engine.ts';
+import {AncientEngine,RequestGate,jobKey,cacheKey,type IO} from '../src/ancient/engine.ts';
+import {directProjections} from '../src/ancient/projection';
 import {formalNodes} from '../src/ancient/ui.ts';
 import {parseHTML} from 'linkedom';
 const page:TreePage=JSON.parse(readFileSync('tests/fixtures/ancient/O-F8.json','utf8'));
@@ -60,6 +61,40 @@ test('direct query finishes, caches, and does not fetch descendant sample detail
 });
 test('descendant query preserves the actual placement and does not double count',async()=>{
   const h=harness();const start=await h.engine.start('O-F8','downstream');const j=await settle(h,start.id);assert.equal(j.samples.length,2);assert.equal(j.samples.find(s=>s.au==='AU104785')!.path.at(-1),'O-YP4864');assert.equal(j.complete,true);
+});
+test('completed ancestor query populates direct child caches and reuses subtree data without requests',async()=>{
+  const h=harness();const parent=await settle(h,(await h.engine.start('O-F8','downstream')).id);
+  const leaf=h.store.get(cacheKey('O-YP4864','direct'));assert.equal(leaf.samples.length,1);assert.deepEqual(leaf.samples[0].path,['O-YP4864']);assert.equal(leaf.branches.length,1);
+  assert.equal(h.store.get(cacheKey('O-F8','direct')).samples.length,1);assert.equal(h.store.get(cacheKey('O-Z44059','direct')).samples.length,0);assert.equal(parent.cachedChildren,2);
+  const n=h.requests.length;const direct=await h.engine.start('O-YP4864','direct');assert.equal(direct.cached,true);assert.equal(direct.samples[0].au,'AU104785');
+  const downstream=await h.engine.start('O-Z44059','downstream');assert.equal(downstream.cached,true);assert.deepEqual(downstream.samples[0].path,['O-Z44059','O-YP4864']);assert.equal(h.requests.length,n);
+});
+test('direct-only or partial ancestor queries do not claim complete child caches',async()=>{
+  const h=harness();await settle(h,(await h.engine.start('O-F8','direct')).id);assert.equal(await h.engine.getCached('O-YP4864','direct'),null);
+  const request=h.io.request;h.io.request=async(url,signal)=>url===s785.url?{status:503,url,body:''}:request(url,signal);
+  const partial=await settle(h,(await h.engine.start('O-F8','downstream',true)).id);assert.equal(partial.complete,false);assert.equal(await h.engine.getCached('O-YP4864','direct'),null);
+});
+test('normal webpage completed ancestor sync also populates descendant caches',async()=>{
+  const h=harness('blocked');const job=await settle(h,(await h.engine.start('O-F8','downstream')).id);await h.engine.adopt(job.id,normalizeTree(apiRows()));
+  await h.engine.sourceDetail(job.id,'AU334',parseDetail(html334,s334.url));await h.engine.sourceDetail(job.id,'AU104785',parseDetail(html785,s785.url));
+  const finished=await h.engine.finishSource(job.id);assert.equal(finished.cachedChildren,2);assert.equal((await h.engine.getCached('O-YP4864','direct'))?.samples.length,1);
+});
+test('existing verified renamed child cache refreshes from canonical data without guessing new aliases',async()=>{
+  const h=harness();const j=await settle(h,(await h.engine.start('O-F8','downstream')).id);const known=h.store.get(cacheKey('O-YP4864','direct'));
+  h.store.set(cacheKey('O-RENAMED123','direct'),{...known,marker:'O-RENAMED123',nodeSnps:['YP4864'],mapping:'已核实SNP对应',updatedAt:j.updatedAt-1000,samples:[]});
+  const found=await h.engine.getCached('O-RENAMED123','direct');assert.equal(found?.samples.length,1);assert.equal(found?.target,'O-YP4864');assert.equal(found?.mappingVerifiedAt,j.updatedAt-1000);
+  assert.equal(await h.engine.getCached('O-UNVERIFIED123','direct'),null);
+});
+test('reuse of an old complete ancestor cache fills missing projections without extending collection time',async()=>{
+  const h=harness();const j=await settle(h,(await h.engine.start('O-F8','downstream')).id);
+  h.store.delete(cacheKey('O-YP4864','direct'));h.store.set(cacheKey('O-F8','downstream'),{...j,projectedVersion:undefined});const count=h.requests.length;
+  const cached=await h.engine.start('O-F8','downstream');assert.equal(cached.cached,true);assert.equal(h.requests.length,count);assert.equal(h.store.get(cacheKey('O-YP4864','direct')).updatedAt,j.updatedAt);
+});
+test('tentative, duplicate-name and unrelated branches do not acquire direct projected caches',async()=>{
+  const h=harness();const j=await settle(h,(await h.engine.start('O-F8','downstream')).id);
+  const extra=[{id:'999',parent:'28',marker:'O-YP4864',pending:false,tentative:false},{id:'998',parent:'28',marker:'O-X1?',pending:false,tentative:true},{id:'997',parent:'998',marker:'O-X2',pending:false,tentative:false},{id:'996',parent:'10000',marker:'O-X3',pending:false,tentative:false}];
+  const names=[...directProjections({...j,branches:[...j.branches,...extra],checked:[...j.checked,...extra.map(b=>b.id)]})].map(j=>j.marker);
+  assert.deepEqual(names,['O-F8','O-Z44059']);
 });
 test('manual refresh bypasses both query and sample-detail caches',async()=>{
   const h=harness();await settle(h,(await h.engine.start('O-F8','direct')).id);const n=h.requests.length;

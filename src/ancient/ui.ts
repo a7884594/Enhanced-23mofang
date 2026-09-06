@@ -45,7 +45,7 @@ export function bootAncientUI(){
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
     q('.pause').hidden=!['running','sync'].includes(j.status);q('.resume').hidden=!['paused','partial','error'].includes(j.status);q('.sync').hidden=j.complete||j.status==='running';
     const regions=q<HTMLSelectElement>('select[aria-label="地区筛选"]');const previous=regions.value;regions.replaceChildren(new Option('全部地区',''),...[...new Set([...j.samples,...j.unknown].map(s=>s.country).filter(Boolean))].sort().map(r=>new Option(r,r)));regions.value=previous;
-    set('.progress',`已确认 ${j.samples.length} 条 · 待核对 ${j.unknown.length} 条\n已检查 ${j.checked.length} 个节点 · 失败 ${j.failures.length} 项\n${j.message}`);
+    set('.progress',`已确认 ${j.samples.length} 条 · 待核对 ${j.unknown.length} 条\n已检查 ${j.checked.length} 个节点 · 失败 ${j.failures.length} 项\n${j.message}${j.cachedChildren!=null?'\n已同步 '+j.cachedChildren+' 个下游节点的本节点缓存':''}`);
     set('.time',`${j.cached?'使用缓存 · ':''}更新于 ${new Date(j.updatedAt).toLocaleString()}`);
     q('.snp-evidence').hidden=!j.nodeSnps;
     const evidence=q('.snp-evidence > div');evidence.replaceChildren();
@@ -56,7 +56,7 @@ export function bootAncientUI(){
     }
     const failures=q('.failures > div');failures.replaceChildren();for(const f of j.failures){const row=document.createElement('p');row.textContent=`${f.key}：${f.message}`;failures.append(row);}q('.failures').hidden=!j.failures.length;
     if(j.status==='unmatched'){const row=document.createElement('p');link(row,'到TheYtree搜索支系',`${TY}/`);failures.append(row);q('.failures').hidden=false;}
-    if(j.complete&&j.scope==='direct'){counts.set(j.marker,j.samples.length);updateBadges();}renderRows();
+    if(j.complete){invalidateCounts();if(j.scope==='direct')counts.set(j.marker,j.samples.length);updateBadges();}renderRows();
   }
   async function query(refresh=false,useSnps=false){const token=++serial;busy=true;job=null;set('.title',`${selected} · 古DNA`);set('.progress','正在查询…');q('.records').replaceChildren();q('.pending').replaceChildren();q('.unknown').hidden=true;q('.failures').hidden=true;q('.empty').hidden=false;set('.empty','正在读取TheYtree公开古DNA信息…');
     set('.time','');set('.mapping','来源：TheYtree');q('.snp-evidence > div').replaceChildren();q('.snp-evidence').hidden=true;
@@ -71,7 +71,9 @@ export function bootAncientUI(){
   q('.refresh').onclick=()=>void query(true);
   for(const [selector,type]of [['.pause','anc.cancel'],['.resume','anc.resume'],['.sync','anc.sync']])q(selector).onclick=async()=>{if(!job)return;const id=job.id,token=serial;try{const r=await api({type,id});if(token!==serial||job?.id!==id)return;if(r?.id)update(r);else set('.progress','已打开TheYtree，请在正常网页完成同步后回到这里');}catch(e){if(token===serial)set('.progress',String(e));}};
   q('input').oninput=renderRows;for(const s of shadow.querySelectorAll('select'))s.onchange=renderRows;
-  const svgNS='http://www.w3.org/2000/svg';let lastCountRequest='';
+  const svgNS='http://www.w3.org/2000/svg';let lastCountRequest='';let countGeneration=0;
+  function invalidateCounts(){lastCountRequest='';countGeneration++;}
+  chrome.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes['anc.cacheRevision'])invalidateCounts();});
   function updateBadges(){for(const e of document.querySelectorAll<SVGGElement>('[data-mofang-ancient]'))paintAncientBadge(e,counts.get(e.dataset.marker||''));const entry=document.querySelector<HTMLButtonElement>('#mofang-ancient-entry');if(entry)paintAnalysisEntry(entry,counts.get(entry.dataset.marker||''));}
   function scan(){
     const route=treeMarker(location.pathname);if(!route){document.querySelectorAll('[data-mofang-ancient],#mofang-ancient-entry').forEach(e=>e.remove());if(!q('.panel').hidden)close();return;}
@@ -99,7 +101,7 @@ export function bootAncientUI(){
       const heading=document.querySelector('h1');if(heading&&!document.getElementById('mofang-ancient-entry')){const b=document.createElement('button');b.id='mofang-ancient-entry';b.dataset.marker=route;paintAnalysisEntry(b,counts.get(route));b.onclick=()=>{const m=treeMarker(location.pathname);if(m)open(m);};heading.after(b);}
     }
     const entry=document.querySelector<HTMLButtonElement>('#mofang-ancient-entry');if(entry)entry.dataset.marker=route;
-    const names=[...new Set([...nodes.map(n=>n.name),...(entry?[route]:[])])].slice(0,600);const key=names.join('|');if(key&&key!==lastCountRequest){lastCountRequest=key;void api({type:'anc.counts',markers:names}).then(result=>{for(const [m,v]of Object.entries<any>(result))counts.set(m,v.count);updateBadges();}).catch(()=>{});}updateBadges();
+    const names=[...new Set([...nodes.map(n=>n.name),...(entry?[route]:[])])].slice(0,600);const key=names.join('|');if(key&&key!==lastCountRequest){lastCountRequest=key;const generation=++countGeneration;void api({type:'anc.counts',markers:names}).then(result=>{if(generation!==countGeneration)return;for(const name of names)counts.delete(name);for(const [m,v]of Object.entries<any>(result))counts.set(m,v.count);updateBadges();}).catch(()=>{if(generation===countGeneration)lastCountRequest='';});}updateBadges();
   }
   let priorRoute=location.pathname;
   setInterval(()=>{
