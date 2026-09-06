@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {copyRegions,copySelections,flatten,matchCounties,percentText,quantiles,colorFor,routeNode,type Atlas} from '../src/model.ts';
+import {COLORS,copyRegions,copySelections,flatten,matchCounties,percentText,quantiles,colorFor,routeNode,type Atlas} from '../src/model.ts';
 const fixture=JSON.parse(readFileSync('tests/fixtures/O-CTS7316.json','utf8'));
 const items=copyRegions(fixture.geographicDistribution.chartItems);
 const records=flatten(items);
@@ -52,4 +52,8 @@ test('duplicate codes are quarantined instead of painting an arbitrary value',()
   const county=records.find(r=>r.code==='130433')!;
   const result=matchCounties([county,{...county,percent:.6}],atlas);
   assert.equal(result.matched.length,0);assert.equal(result.unmatched.length,2);
+});
+test('frequency palette runs from green to red; gray remains reserved for missing data',()=>{
+  const bins=quantiles([0,.01,.02,.03,.04,.05]);
+  assert.equal(colorFor(0,bins),'#1a9850');assert.equal(colorFor(.05,bins),'#d73027');assert.equal(COLORS.includes('#e9edf1'),false);
 });

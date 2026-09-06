@@ -7,7 +7,7 @@ export interface Atlas {type:'FeatureCollection'; features:GeoFeature[]; metadat
 export interface Matched {record:County; feature:GeoFeature}
 export interface Unmatched {record:County; reason:string}
 export const CHANNEL='mofang-county-map/v1';
-export const COLORS=['#d6e9f4','#99cbdc','#55aabf','#257d9b','#134b70'];
+export const COLORS=['#1a9850','#91cf60','#fee08b','#fc8d59','#d73027'];
 export const NO_DATA='#e9edf1';
 export function routeNode(path:string):string|null {
   const match=/^\/ancestry\/ytree\/([^/]+)\/branch\/?$/.exec(path);

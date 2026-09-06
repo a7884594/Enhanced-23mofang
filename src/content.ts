@@ -10,16 +10,30 @@ let originalDisplay='';let chart:echarts.ECharts|null=null;let observer:ResizeOb
 let snapshot:Snapshot|null=null;let atlasPromise:Promise<Atlas>|null=null;let generation=0;
 let countyMode=true;let currentNode='';let boundTo:Element|null=null;let lastRoute=location.pathname+location.search;
 let lastSnapshotKey='';let startup=Date.now();let matched:Matched[]=[];let atlas:Atlas|null=null;
+let originalResizeGeneration=0;
 const q=<T extends HTMLElement=HTMLElement>(selector:string)=>shadow!.querySelector<T>(selector)!;
 function text(selector:string,value:string){q(selector).textContent=value;}
-function restoreOriginal(){if(original){original.style.display=originalDisplay;original=null;}}
+function requestOriginalResize(container:HTMLElement){
+  const token=++originalResizeGeneration;
+  const route=location.pathname+location.search;
+  const notify=()=>{
+    if(token!==originalResizeGeneration||!container.isConnected||container.style.display==='none'||route!==location.pathname+location.search)return;
+    window.postMessage({channel:CHANNEL,type:'resize-original',route},location.origin);
+    // Also notify the site's normal responsive listeners.
+    window.dispatchEvent(new Event('resize'));
+  };
+  requestAnimationFrame(()=>requestAnimationFrame(notify));
+  setTimeout(notify,300);
+}
+function showOriginal(){if(original){original.style.display=originalDisplay;requestOriginalResize(original);}}
+function restoreOriginal(){showOriginal();original=null;}
 function cleanup(){generation++;chart?.dispose();chart=null;observer?.disconnect();observer=null;restoreOriginal();host?.remove();host=null;shadow=null;boundTo=null;matched=[];}
 function setMode(value:boolean){
   countyMode=value;if(!shadow)return;
   q('.map-wrap').hidden=!value||!chart;
   q('.unmatched').hidden=!value||!q('tbody').children.length;
   q('.county-tab').setAttribute('aria-selected',String(value));q('.province-tab').setAttribute('aria-selected',String(!value));
-  if(original)original.style.display=value&&snapshot?.status==='ready'&&chart?'none':originalDisplay;
+  if(original){if(value&&snapshot?.status==='ready'&&chart){originalResizeGeneration++;original.style.display='none';}else showOriginal();}
   if(value)requestAnimationFrame(()=>chart?.resize());
 }
 function mount():boolean {
@@ -77,7 +91,7 @@ async function render(){
   if(!mount())return;
   const token=++generation;
   chart?.dispose();chart=null;observer?.disconnect();observer=null;matched=[];
-  if(original)original.style.display=originalDisplay;
+  showOriginal();
   q('.map-wrap').hidden=true;q('.notice').hidden=false;q('.unmatched').hidden=true;q('tbody').replaceChildren();
   text('.title',`${s.node} · 全国区县频率`);text('.sub',s.label?'当前显示所选籍贯范围，频率沿用网站原值':'全国视图 · 与当前支系数据同步');text('.status','');text('.selection','');q('.results').replaceChildren();
   if(s.status!=='ready'){
@@ -96,19 +110,19 @@ async function render(){
     const values=new Map(matched.map(m=>[m.record.code,m.record.percent!]));
     chart.setOption({animation:false,tooltip:{trigger:'item',renderMode:'richText',confine:true,formatter:(p:any)=>describe(p.name),backgroundColor:'#ffffff',borderColor:'#d6e3eb',textStyle:{color:'#244559',fontSize:12}},
       geo:{map:'mofang-counties',nameProperty:'code',roam:true,zoom:1,scaleLimit:{min:1,max:35},layoutCenter:['50%','50%'],layoutSize:'96%',silent:false,label:{show:false},tooltip:{show:true,formatter:(p:any)=>describe(p.name)},itemStyle:{areaColor:NO_DATA,borderColor:'#becdd7',borderWidth:.35},emphasis:{label:{show:false},itemStyle:{areaColor:'#f0c977',borderColor:'#9a7332',borderWidth:1}},selectedMode:false,
-        regions:atlas.features.map(f=>{const v=values.get(f.properties.code);return {name:f.properties.code,itemStyle:{areaColor:v===undefined?NO_DATA:colorFor(v,bins)}};})}
+        regions:atlas.features.map(f=>{const v=values.get(f.properties.code);const color=v===undefined?NO_DATA:colorFor(v,bins);return {name:f.properties.code,itemStyle:{areaColor:color},emphasis:{itemStyle:{areaColor:color}}};})}
     });
     chart.on('click',(p:any)=>{if(p.name)text('.selection',describe(p.name).replace('\n','　'));});
     observer=new ResizeObserver(()=>chart?.resize());observer.observe(q('.map'));
     const legend=q('.legend');legend.replaceChildren();
-    const label=document.createElement('span');label.className='legend-label';label.textContent='全国统一色阶 · 分位数';legend.append(label);
+    const label=document.createElement('span');label.className='legend-label';label.textContent='低频（绿）→ 高频（红） · 全国分位数';legend.append(label);
     for(const bin of [...bins,{color:NO_DATA,label:'未提供 / 未匹配'}]){const key=document.createElement('span');key.className='key';const swatch=document.createElement('i');swatch.className='swatch';swatch.style.background=bin.color;key.append(swatch,document.createTextNode(bin.label));legend.append(key);}
     text('.status',`已匹配 ${matched.length} / ${records.length} 条区县数据 · 未匹配 ${result.unmatched.length} 条${s.label?' · 籍贯筛选：'+s.label:''}${atlas.metadata?.failures?.length?' · 部分地图边界下载失败':''}`);
     text('.sub',s.label?'当前显示所选籍贯范围，频率沿用网站原值':'全国视图 · 与当前支系数据同步');
     for(const u of result.unmatched){const tr=document.createElement('tr');for(const value of [u.record.path.join(' / '),percentText(u.record.percent),u.reason]){const td=document.createElement('td');td.textContent=value;tr.append(td);}q('tbody').append(tr);}
     text('summary',`${result.unmatched.length} 条区县数据未能着色 · 查看明细`);
     setMode(countyMode);
-  }catch(e){if(token!==generation)return;chart?.dispose();chart=null;q('.map-wrap').hidden=true;q('.notice').hidden=false;text('.notice',`${e instanceof Error?e.message:'地图加载失败'}。请重新加载扩展并刷新网页，原地图已保留。`);if(original)original.style.display=originalDisplay;}
+  }catch(e){if(token!==generation)return;chart?.dispose();chart=null;q('.map-wrap').hidden=true;q('.notice').hidden=false;text('.notice',`${e instanceof Error?e.message:'地图加载失败'}。请重新加载扩展并刷新网页，原地图已保留。`);showOriginal();}
 }
 function request(){window.postMessage({channel:CHANNEL,type:'request'},location.origin);}
 document.addEventListener('fullscreenchange',()=>{if(shadow){text('.fullscreen',document.fullscreenElement?'退出全屏':'全屏查看');requestAnimationFrame(()=>chart?.resize());}});

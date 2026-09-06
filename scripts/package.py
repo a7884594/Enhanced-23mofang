@@ -4,19 +4,21 @@ import json, shutil, zipfile, hashlib
 root = Path(__file__).resolve().parents[1]
 release = root / 'release'
 release.mkdir(exist_ok=True)
-bundle = release / '23mofang-county-map-v1.0.0'
+version = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))['version']
+assert json.loads((root / 'package.json').read_text(encoding='utf-8'))['version'] == version
+bundle = release / f'23mofang-county-map-v{version}'
 bundle.mkdir(exist_ok=True)
 shutil.copytree(root / 'dist', bundle / 'extension', dirs_exist_ok=True)
 shutil.copy2(root / 'README.md', bundle / '安装与使用说明.md')
 shutil.copy2(root / 'VALIDATION.md', bundle / '验证记录.md')
 
-installer = release / '23魔方区县地图-v1.0.0-安装包.zip'
+installer = release / f'23魔方区县地图-v{version}-安装包.zip'
 with zipfile.ZipFile(installer, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for p in sorted(bundle.rglob('*')):
         if p.is_file():
             z.write(p, p.relative_to(bundle))
 
-source = release / '23魔方区县地图-v1.0.0-源码.zip'
+source = release / f'23魔方区县地图-v{version}-源码.zip'
 with zipfile.ZipFile(source, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for name in ['package.json', 'package-lock.json', 'tsconfig.json', 'manifest.json', '.gitignore', 'README.md', 'VALIDATION.md', 'src', 'scripts', 'tests', 'assets', 'test-results']:
         path = root / name

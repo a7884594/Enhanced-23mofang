@@ -1,4 +1,5 @@
 import {CHANNEL,copyRegions,copySelections,routeNode,type Snapshot} from './model';
+import {resizeOriginalMap} from './original-map';
 
 // This MAIN-world script only reads the current page's public geographic summary.
 // Never serialize Vue, Nuxt state, account information, or authentication values.
@@ -9,6 +10,16 @@ if(!w.__mofangCountyBridgeV1) {
   let previousNode:string|null=null; let blockedBranch:any; let navigating=false;
   let started=Date.now(); const firstURL=location.pathname+location.search;
   let hasNavigated=false;
+  let resizeGeneration=0;
+  function requestOriginalResize(route:string){
+    const token=++resizeGeneration;
+    function attempt(remaining:number){
+      if(token!==resizeGeneration||route!==location.pathname+location.search||!routeNode(location.pathname))return;
+      const done=resizeOriginalMap(w.$nuxt,document.querySelector('.parentsum-distributed-map-container'));
+      if(!done&&remaining>0)setTimeout(()=>attempt(remaining-1),150);
+    }
+    requestAnimationFrame(()=>attempt(6));
+  }
   function send(snapshot:Snapshot,force=false) {
     const key=JSON.stringify(snapshot);
     if(force||key!==fingerprint) {fingerprint=key;window.postMessage({channel:CHANNEL,type:'snapshot',snapshot},location.origin);}
@@ -63,7 +74,9 @@ if(!w.__mofangCountyBridgeV1) {
     }catch {status('error','页面数据结构发生变化，已保留原地图。',force);}
   }
   window.addEventListener('message',event=>{
-    if(event.source===window&&event.origin===location.origin&&event.data?.channel===CHANNEL&&event.data?.type==='request') read(true);
+    if(event.source!==window||event.origin!==location.origin||event.data?.channel!==CHANNEL)return;
+    if(event.data?.type==='request')read(true);
+    if(event.data?.type==='resize-original'&&typeof event.data.route==='string')requestOriginalResize(event.data.route);
   });
   window.addEventListener('popstate',()=>{started=Date.now();read();});
   window.addEventListener('pageshow',()=>read(true));
