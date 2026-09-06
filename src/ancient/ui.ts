@@ -1,4 +1,5 @@
 import {profileText,RESEARCH} from './profile';
+import {badgePosition} from './badge-layout';
 import {formationAge,showAncientEntry,analysisAge} from './age';
 import {knownDirectCount,type BadgeCount} from './counts';
 import {paintAncientBadge,paintAnalysisEntry} from './badge';
@@ -111,12 +112,8 @@ export function bootAncientUI(){
       button.setAttribute('aria-label',profileText(`${name} 古DNA`));
       paintAncientBadge(button,counts.get(name)?.count,counts.get(name)?.complete);
       if(button.getAttribute('aria-hidden')==='true')continue;
-      const matrix=node.getScreenCTM();if(!matrix?.a)continue;
-      const snp=node.querySelector<SVGGElement>(':scope > .snp-wrapper');const ancient=RESEARCH?node.querySelector<SVGGElement>(':scope > [data-mofang-ancient]'):null;const adjacent=ancient?.getBoundingClientRect();const bounds=adjacent?.width?adjacent:snp?.getBoundingClientRect();
-      const right=bounds?.width?bounds.right:Math.max(...[...node.children].filter(e=>e!==button&&!e.hasAttribute('data-mofang-ancient')&&!e.hasAttribute('data-mofang-research')).map(e=>e.getBoundingClientRect().right));
-      const height=Number(button.querySelector('rect')?.getAttribute('height')||20);
-      const y=bounds?.height&&matrix.d?(bounds.top+bounds.height/2-matrix.f)/matrix.d-height/2:3;
-      const x=(right-matrix.e)/matrix.a+3;const transform=`translate(${x},${y})`;if(button.getAttribute('transform')!==transform)button.setAttribute('transform',transform);
+      const position=badgePosition(node,button,RESEARCH);if(!position)continue;
+      const transform=`translate(${position.x},${position.y})`;if(button.getAttribute('transform')!==transform)button.setAttribute('transform',transform);
     }
     if(!nodes.length&&branchPage&&!youngBranch){
       const heading=document.querySelector('h1');if(heading&&!document.getElementById(profileText('mofang-ancient-entry'))){const b=document.createElement('button');b.id=profileText('mofang-ancient-entry');b.dataset.marker=route;paintAnalysisEntry(b,counts.get(route)?.count,counts.get(route)?.complete);b.onclick=()=>{const m=treeMarker(location.pathname);if(m)open(m);};heading.after(b);}
