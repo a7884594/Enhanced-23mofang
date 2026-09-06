@@ -1,6 +1,6 @@
 import {profileText} from './profile';
 import {A_CHANNEL,TY,sourceMarker,queryUrl,nodeUrl,normalizeTree,sourceUrl,type TreePage,type QueryResult} from './model';
-import {equivalentUrl,equivalentEvidence,dialogGroups} from './equivalent';
+import {equivalentUrl,equivalentEvidence,dialogGroups,pendingEquivalentCandidates} from './equivalent';
 import {snpUrl,needsSnpQuery} from './snps';
 import {parseDetail,parseTreeDOM} from './parser';
 async function send(message:any){const r=await chrome.runtime.sendMessage(message);if(!r?.ok)throw Error(r?.error||'扩展通信失败');return r.value;}
@@ -32,9 +32,10 @@ async function synchronize(force=false){
         job=await send({type:profileText('anc.sourceSnp'),snp:value,page:p,mappingToken});
         text!.textContent=`SNP核对 ${job.snpChecks?.length} / ${job.nodeSnps!.length}`;
       }
-      const candidates=[...new Map((job.snpChecks||[]).filter(v=>v.issue&&v.candidate).map(v=>[v.candidate!.id,v.candidate!])).values()];
+      const candidates=pendingEquivalentCandidates(job.snpChecks||[]);
       for(const c of candidates){
         const state=await send({type:profileText('anc.sourceContext')});if(state?.mappingToken!==mappingToken||state.status==='paused')return;
+        if(state.mappingReady){job=state;break;}
         text!.textContent=`正在读取 ${c.marker} 的等价SNP列表（使用本页正常登录状态）…`;
         let groups:unknown;let method:'authenticated-page'|'visible-dialog'='authenticated-page';
         try{

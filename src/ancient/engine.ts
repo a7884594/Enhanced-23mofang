@@ -3,7 +3,7 @@ import {profileText} from './profile';
 import {TY,TTL,marker,sourceUrl,queryUrl,nodeUrl,normalizeTree,selectSamples,pathToRoot,dedupe,fresh,type QueryResult,type TreePage,type AncientSample} from './model';
 import {parseDetail} from './parser';
 import {snps,checkSnp,snpUrl,mappingTarget,needsSnpQuery} from './snps';
-import {equivalentEvidence,applyEquivalent,disambiguate,type EquivalentEvidence} from './equivalent';
+import {equivalentEvidence,applyEquivalent,disambiguate,pendingEquivalentCandidates,type EquivalentEvidence} from './equivalent';
 import {directProjections,subtreeProjection} from './projection';
 import {knownDirectCount,type BadgeCount} from './counts';
 import {loadMatch,confirmedMatch,matchKey} from './node-match';
@@ -138,13 +138,14 @@ export class AncientEngine {
   private resolveMapping(j:QueryResult){
     const checks=disambiguate(j.snpChecks||[],j.marker);j.snpChecks=checks;const target=mappingTarget(checks);
     if(!target||checks.some(v=>v.issue)){
-      j.status=checks.some(v=>v.issue&&v.candidate&&!v.evidence)?'sync':checks.some(v=>v.target||v.issue)?'partial':'unmatched';j.complete=false;
+      j.status=pendingEquivalentCandidates(checks).length?'sync':checks.some(v=>v.target||v.issue)?'partial':'unmatched';j.complete=false;
       j.message=checks.some(v=>v.target||v.issue)?'SNP对应存在分歧或缺少交叉依据，未自动合并样本':'节点全部SNP均未找到可核实对应';
       if(j.status==='sync')j.message='需登录TheYtree核对候选节点的等价SNP列表；打开源站同步后继续';
       j.mapping='完整SNP核对尚未建立唯一对应';return false;
     }
     j.target=target;j.mappingReady=true;
     j.mapping=`${j.marker} → ${target} · ${checks.some(v=>v.evidence)?'两站SNP列表交叉对应':'节点SNP交叉对应'}，挂载关系以TheYtree为准`;
+    if(checks.some(v=>v.note?.startsWith('两站树粒度不同')))j.mapping+='；源站有进一步细分，本节点仅查直接挂载样本';
     return true;
   }
   async beginSource(id:string){
@@ -216,7 +217,7 @@ export class AncientEngine {
       if(j.nodeSnps&&!j.mappingReady){
         for(const value of j.nodeSnps){
           if(!needsSnpQuery(j.snpChecks,value))continue;
-          const key=profileText(`anc.snp3.${j.nodeSnps.join(',')}.${value}`);
+          const key=profileText(`anc.snp4.${j.nodeSnps.join(',')}.${value}`);
           const cached=await this.io.get(key);
           let check;
           if(!j.forceRefresh&&cached&&this.io.now()-cached.at<TTL)check=cached.check;
@@ -231,9 +232,8 @@ export class AncientEngine {
           j.message=`正在核对节点SNP：${j.snpChecks.length} / ${j.nodeSnps.length}`;
           if(c.signal.aborted)return;await this.save(j);
         }
-        for(const check of j.snpChecks||[]){
-          if(!check.issue||!check.candidate)continue;
-          const c=check.candidate;const e=await this.io.get(profileText(`anc.equivalent3.${c.id}.${c.marker}`));
+        for(const c of pendingEquivalentCandidates(j.snpChecks||[])){
+          const e=await this.io.get(profileText(`anc.equivalent3.${c.id}.${c.marker}`));
           if(!j.forceRefresh&&e&&this.io.now()-e.capturedAt<TTL){
             try{j.snpChecks=applyEquivalent(j.snpChecks||[],equivalentEvidence(c,e.groups,j.nodeSnps!,e.capturedAt,e.method));}catch{/* stale count/format: normal page must refresh */}
           }

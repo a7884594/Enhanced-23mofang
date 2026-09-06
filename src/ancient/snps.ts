@@ -6,10 +6,11 @@ export function snp(v:unknown):string|null {
 }
 export function snps(v:unknown):string[]{return Array.isArray(v)?[...new Set(v.map(snp).filter((s):s is string=>!!s))].sort():[];}
 export const snpUrl=(s:string)=>`${TY}/api/ysnp/theytree/?snp=${encodeURIComponent(s)}`;
-export interface SnpCheck {snp:string;target:string;issue:string;url:string;note?:string;candidate?:import('./equivalent').EquivalentCandidate;evidence?:import('./equivalent').EquivalentEvidence}
+export interface SnpCheck {snp:string;target:string;issue:string;url:string;note?:string;descendants?:string[];candidate?:import('./equivalent').EquivalentCandidate;evidence?:import('./equivalent').EquivalentEvidence}
 export function needsSnpQuery(checks:SnpCheck[]|undefined,value:string):boolean {
   const check=checks?.find(c=>c.snp===value);
-  return !check||!!check.issue&&!check.candidate;
+  const split=new Set(checks?.map(c=>c.target).filter(Boolean)).size>1;
+  return !check||!!check.issue&&!check.candidate||!!(split&&check.candidate&&!check.descendants);
 }
 // Search may return the default world tree for unknown SNPs. Never accept its
 // first row or an ancestor as an alias. Require a unique subtree root whose
@@ -20,7 +21,16 @@ export function checkSnp(page:TreePage,value:string,local:string[]):SnpCheck {
   const root=roots.length===1?roots[0]:null;
   const target=root&&marker(root.marker)&&local.includes(snp(root.marker)||'')?root.marker:'';
   const defaultTree=page.branches.some(b=>b.marker==='ROOT');
-  return {snp:value,target,issue:!target&&!defaultTree?'需登录TheYtree核对该候选节点的等价SNP列表':'',url:snpUrl(value),candidate:root&&!defaultTree?{id:root.id,marker:root.marker,count:root.equivalentCount}:undefined};
+  const descendants:string[]=[];
+  if(root&&!defaultTree&&ids.size===page.branches.length){
+    const children=new Map<string,typeof page.branches>();
+    for(const b of page.branches){const list=children.get(b.parent)||[];list.push(b);children.set(b.parent,list);}
+    const queue=[root.id],seen=new Set(queue);
+    for(let i=0;i<queue.length;i++)for(const b of children.get(queue[i])||[]){
+      if(b.tentative||seen.has(b.id))continue;seen.add(b.id);queue.push(b.id);descendants.push(b.marker);
+    }
+  }
+  return {snp:value,target,issue:!target&&!defaultTree?'需登录TheYtree核对该候选节点的等价SNP列表':'',url:snpUrl(value),descendants,candidate:root&&!defaultTree?{id:root.id,marker:root.marker,count:root.equivalentCount}:undefined};
 }
 export function mappingTarget(checks:SnpCheck[]):string {
   const targets=[...new Set(checks.map(c=>c.target).filter(Boolean))];

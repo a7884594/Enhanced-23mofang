@@ -28,6 +28,10 @@ export function equivalentEvidence(c:EquivalentCandidate,groups:unknown,local:st
 export function applyEquivalent(checks:SnpCheck[],e:EquivalentEvidence):SnpCheck[]{
   return checks.map(c=>c.candidate?.id===e.id&&c.candidate.marker===e.marker?{...c,target:e.overlap.length?e.marker:'',issue:e.overlap.length?'':'两站节点SNP列表没有共同标记，未确认对应',evidence:e}:c);
 }
+export function pendingEquivalentCandidates(checks:SnpCheck[]):EquivalentCandidate[]{
+  const multiple=new Set(checks.map(c=>c.target).filter(Boolean)).size>1;
+  return [...new Map(checks.filter(c=>c.candidate&&!c.evidence&&(c.issue||multiple)).map(c=>[c.candidate!.id,c.candidate!])).values()];
+}
 export function disambiguate(checks:SnpCheck[],primary:string):SnpCheck[]{
   if(checks.some(c=>c.issue&&!c.evidence))return checks;
   const evidence=[...new Map(checks.filter(c=>c.evidence).map(c=>[c.evidence!.id,c.evidence!])).values()];
@@ -38,8 +42,12 @@ export function disambiguate(checks:SnpCheck[],primary:string):SnpCheck[]{
   // alias corroborated by a second mutation. Never resolve disjoint support or
   // two candidates that both contain the current primary name.
   const other=checks.filter(c=>c.candidate&&c.candidate.id!==winner.id);
-  if(other.some(c=>!c.evidence||c.evidence.overlap.length>=winner.overlap.length||c.evidence.overlap.some(s=>!winner.overlap.includes(s))))return checks;
-  return checks.map(c=>c.candidate&&c.candidate.id!==winner.id?{...c,target:'',issue:'',note:`搜索歧义：${c.candidate.marker} 的共同SNP不足以建立本节点对应；已按主标记别名及第二个共同突变对应 ${winner.marker}，未合并该候选样本`}:c);
+  const descendants=new Set(checks.filter(c=>c.candidate?.id===winner.id).flatMap(c=>c.descendants||[]));
+  if(other.some(c=>!c.evidence||c.evidence.overlap.includes(snp(primary)||'')||
+    (!descendants.has(c.candidate!.marker)&&(c.evidence.overlap.length>=winner.overlap.length||c.evidence.overlap.some(s=>!winner.overlap.includes(s))))))return checks;
+  return checks.map(c=>c.candidate&&c.candidate.id!==winner.id?{...c,target:'',issue:'',note:descendants.has(c.candidate.marker)?
+    `两站树粒度不同：${c.candidate.marker} 已在源站树中确认为 ${winner.marker} 的下游；本节点按主标记别名对应 ${winner.marker}，该下游样本仅在“包含下游”中查询`:
+    `搜索歧义：${c.candidate.marker} 的共同SNP不足以建立本节点对应；已按主标记别名及第二个共同突变对应 ${winner.marker}，未合并该候选样本`}:c);
 }
 export function dialogGroups(doc:Document,c:EquivalentCandidate):string[]|null {
   const modal=doc.querySelector<HTMLElement>('#equivalentMutationsModal');
