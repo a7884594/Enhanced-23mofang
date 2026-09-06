@@ -45,7 +45,9 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
         await engine.pause(id);const waiting=await engine.get(id);if(!waiting)throw Error('任务不存在');waiting.status='sync';waiting.complete=false;waiting.message='等待正常源站网页同步';await engine.save(waiting);
         // Explicit button action opens a normal, visible source page. No bypass,
         // hidden authentication or background tab farming.
-        const target=j.snpChecks?.find(v=>v.issue&&v.candidate)?.candidate?.marker||j.target;
+        // Old candidate diagnostics must never override a resolved node. Read
+        // the paused snapshot so the URL and the task binding use one state.
+        const target=waiting.mappingReady?waiting.target:waiting.snpChecks?.find(v=>v.issue&&v.candidate)?.candidate?.marker||waiting.target;
         await chrome.storage.local.set({[profileText(`anc.syncTarget.${id}`)]:target});
         const opened=await chrome.tabs.create({url:treeUrl(target),active:true});
         if(opened.id==null)throw Error('无法打开源站页面');

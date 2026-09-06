@@ -25,3 +25,26 @@ test('source bridge exports only ancient whitelist fields, not the raw tree obje
   w.eval(bridge);w.dispatchEvent(new w.MessageEvent('message',{source:w,origin:w.location.origin,data:{channel:'mofang-ancient/v1',type:'read-source'}}));
   assert.equal(messages.length,1);assert.equal(messages[0].page.samples.length,1);assert.equal(JSON.stringify(messages).includes('SECRET'),false);assert.equal(JSON.stringify(messages).includes('MODERN_PRIVATE'),false);dom.window.close();
 });
+
+test('sync opens the resolved target despite stale unrelated candidates, in both sample modes',async()=>{
+  for(const research of [false,true]){
+    const prefix=research?'res':'anc';const id='sync-job';let listener:any;let tabId=98;const opened:any[]=[];
+    const store:Record<string,any>={
+      [`${prefix}.owner.1`]:id,[`${prefix}.parentTab.${id}`]:1,
+      [`${prefix}.job.${id}`]:{id,marker:'O-MF10031',target:'O-CTS5308',mappingReady:true,scope:'downstream',status:'partial',complete:false,createdAt:Date.now(),updatedAt:Date.now(),samples:[],unknown:[],branches:[],checked:[],queue:[],details:[],failures:[],nodeSnps:['MF10031'],snpChecks:[{snp:'X123',target:'',issue:'历史候选待核对',candidate:{id:'123',marker:'R-Y82825'}}]}
+    };
+    const chrome={runtime:{onMessage:{addListener:(l:any)=>{listener=l;}}},storage:{local:{get:async(k:string)=>({[k]:structuredClone(store[k])}),set:async(v:any)=>{Object.assign(store,structuredClone(v));}}},tabs:{create:async(options:any)=>{opened.push(options);return {id:++tabId};}}};
+    const code=research?(await build({entryPoints:['src/ancient/background.ts'],bundle:true,write:false,format:'iife',define:{__RESEARCH__:'true'}})).outputFiles[0].text:worker;
+    runInNewContext(code,{chrome,URL,atob,btoa,AbortController,AbortSignal,DOMException,setTimeout,clearTimeout,crypto:{randomUUID:()=>id},fetch:async()=>{throw Error('Opening sync must not fetch samples');}});
+    const ask=(type:string,tab=1,url='https://www.23mofang.com/ancestry/ytree/O-MF10031')=>new Promise<any>(resolve=>listener({type:`${prefix}.${type}`,id},{url,tab:{id:tab}},resolve));
+    assert.equal((await ask('sync')).ok,true);assert.equal(opened[0].url,'https://www.theytree.com/tree/O-CTS5308');assert.equal(opened[0].active,true);
+    assert.equal(store[`${prefix}.syncTarget.${id}`],'O-CTS5308');
+    assert.equal((await ask('sourceBegin',99,'https://www.theytree.com/tree/R-Y82825')).ok,false);
+    assert.equal((await ask('sync')).ok,true);
+    assert.equal((await ask('sourceContext',99,'https://www.theytree.com/tree/O-CTS5308')).value,null);
+    assert.equal((await ask('sourceBegin',100,'https://www.theytree.com/tree/O-CTS5308')).ok,true);
+    // Before identity is confirmed, a candidate page is still allowed for SNP verification.
+    store[`${prefix}.job.${id}`].mappingReady=false;
+    assert.equal((await ask('sync')).ok,true);assert.equal(opened[2].url,'https://www.theytree.com/tree/R-Y82825');
+  }
+});
