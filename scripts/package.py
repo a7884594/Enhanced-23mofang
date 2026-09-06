@@ -39,6 +39,10 @@ with zipfile.ZipFile(installer) as z:
     atlas = json.loads(z.read('extension/assets/counties.geo.json'))
     assert atlas['metadata']['countyCount'] == 2840
     assert not atlas['metadata']['failures']
+    city_atlas = json.loads(z.read('extension/assets/cities.geo.json'))
+    assert city_atlas['metadata']['cityCount'] == 367
+    assert not city_atlas['metadata']['failures']
+    assert not any(f['properties']['level'] == 'district' for f in city_atlas['features'])
     for p in (root / 'dist').rglob('*'):
         if p.is_file():
             assert z.read('extension/' + p.relative_to(root / 'dist').as_posix()) == p.read_bytes()

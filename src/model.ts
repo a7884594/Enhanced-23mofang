@@ -39,15 +39,38 @@ export function flatten(items:Region[], selections:Selection[][]=[]):County[] {
   }
   visit(items,[]);return result;
 }
-export function matchCounties(records:County[], atlas:Atlas) {
-  const byCode=new Map(atlas.features.filter(f=>f.properties.level==='district').map(f=>[f.properties.code,f]));
+export function flattenCities(items:Region[],selections:Selection[][]=[]):County[] {
+  const result:County[]=[];
+  const municipalities=new Set(['11','12','31','50']);
+  for(const province of items){
+    const provinceCode=province.code.slice(0,2);
+    const relevant=selections.filter(row=>row[0]?.code==='0'||sameCode(row[0]?.code||'',province.code));
+    if(selections.length&&!relevant.length)continue;
+    if(municipalities.has(provinceCode)){
+      // A municipality is one city. Its citywide value is already supplied by
+      // the site; never combine the 市辖区/县 grouping or individual districts.
+      result.push({code:provinceCode+'0000',name:province.name,province:province.name,city:province.name,path:[province.name],percent:province.percent});
+      continue;
+    }
+    for(const city of province.childItems){
+      if(!(city.code.length===4 || city.code.length===6&&city.code.endsWith('00')))continue;
+      if(selections.length&&!relevant.some(row=>!row[1]||row[1].code==='0'||sameCode(row[1].code,city.code)))continue;
+      result.push({code:city.code.padEnd(6,'0'),name:city.name,province:province.name,city:city.name,path:[province.name,city.name],percent:city.percent});
+    }
+  }
+  return result;
+}
+export function matchCounties(records:County[], atlas:Atlas,level:'district'|'city'='district') {
+  const label=level==='city'?'市级地区':'区县';
+  const byCode=new Map(atlas.features.filter(f=>f.properties.level===level).map(f=>[f.properties.code,f]));
   const counts=new Map<string,number>(); records.forEach(r=>counts.set(r.code,(counts.get(r.code)||0)+1));
   const matched:Matched[]=[]; const unmatched:Unmatched[]=[];
   for(const record of records) {
     const feature=byCode.get(record.code);
     let reason='';
-    if(counts.get(record.code)!==1)reason='重复区县代码，无法确定唯一频率';
-    else if(!feature)reason='地图缺少该代码，可能涉及旧区划';
+    if(counts.get(record.code)!==1)reason=`重复${label}代码，无法确定唯一频率`;
+    else if(level==='city'&&record.name.includes('直辖县级'))reason='省直辖县级汇总，不对应独立的地级市边界';
+    else if(!feature)reason=`地图缺少该${label}代码，可能涉及旧区划${level==='city'?'或非市级汇总':''}`;
     else if(feature.properties.name!==record.name)reason=`同代码地名不一致（地图：${feature.properties.name}），待核对边界`;
     else if(record.percent===null)reason='网站未提供有效频率';
     if(reason)unmatched.push({record,reason}); else matched.push({record,feature:feature!});

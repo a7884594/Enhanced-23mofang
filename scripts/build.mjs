@@ -6,6 +6,8 @@ await build({entryPoints:['src/content.ts','src/bridge.ts'],outdir:'dist',bundle
 await copyFile('manifest.json','dist/manifest.json');
 await copyFile('assets/counties.geo.json','dist/assets/counties.geo.json');
 await copyFile('assets/map-provenance.json','dist/assets/map-provenance.json');
+await copyFile('assets/cities.geo.json','dist/assets/cities.geo.json');
+await copyFile('assets/city-map-provenance.json','dist/assets/city-map-provenance.json');
 // Original geometric icon, rendered directly to PNG without external assets.
 function crc32(b){let c=0xffffffff;for(const byte of b){c^=byte;for(let j=0;j<8;j++)c=c&1?0xedb88320^(c>>>1):c>>>1;}return(c^0xffffffff)>>>0;}
 function chunk(type,data){const t=Buffer.from(type);const length=Buffer.alloc(4);length.writeUInt32BE(data.length);const crc=Buffer.alloc(4);crc.writeUInt32BE(crc32(Buffer.concat([t,data])));return Buffer.concat([length,t,data,crc]);}
