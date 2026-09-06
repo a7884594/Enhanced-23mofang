@@ -55,7 +55,7 @@ async function synchronize(force=false){
     let page=sourceMarker(location.pathname)===job.target?rendered:null;
     if(!page?.valid){try{page=normalizeTree(JSON.parse(await fetchPage(queryUrl(job.target))));}catch{page=parseTreeDOM(document);}}
     if(!page?.valid)throw Error('树尚未加载，请稍后点击同步');
-    if(!job.nodeSnps&&!page.branches.some(b=>!b.tentative&&b.marker===job.marker)){
+    if(!job.nodeSnps&&job.target===job.marker&&!page.branches.some(b=>!b.tentative&&b.marker===job.marker)){
       job=await send({type:profileText('anc.sourceUnmatched'),page,mappingToken});text!.textContent=job.message;return;
     }
     job=await send({type:profileText('anc.source'),page});

@@ -65,19 +65,21 @@ export class AncientEngine {
   }
   async getCached(name:string,scope:'direct'|'downstream'):Promise<QueryResult|null>{
     const now=this.io.now();let current:QueryResult|null=await this.readCompatibleCache(name,scope);
-    const known=await loadMatch(this.io,name);
+    const configured=resolveTarget(name);const fixed=configured.target!==name;
+    const saved=await loadMatch(this.io,name);const known=saved&&(!fixed||saved.target===configured.target)?saved:null;
+    if(fixed&&current?.target!==configured.target)current=null;
     // A confirmed identity can exist without any completed sample query under
     // the 23mofang name. Ancestor projections are keyed by the source name.
     if(known&&current&&current.target!==known.target)current=null;
     if(scope==='direct'){
       const whole=await this.readCompatibleCache(name,'downstream');
-      if(whole&&(!known||whole.target===known.target)&&fresh(whole,now)&&(!current||whole.updatedAt>current.updatedAt||whole.projectedVersion!==1)){
+      if(whole&&(!fixed||whole.target===configured.target)&&(!known||whole.target===known.target)&&fresh(whole,now)&&(!current||whole.updatedAt>current.updatedAt||whole.projectedVersion!==1)){
         await this.cacheResult({...whole,projectedVersion:undefined});
         current=await this.readCompatibleCache(name,scope);
       }
     }
     const direct:QueryResult|null=scope==='direct'?current:await this.readCompatibleCache(name,'direct');
-    const alias=known?{...known,mappingVerifiedAt:known.verifiedAt,matchReused:true,updatedAt:known.verifiedAt}:direct&&direct.target!==name?direct:null;
+    const alias=known?{...known,mappingVerifiedAt:known.verifiedAt,matchReused:true,updatedAt:known.verifiedAt}:fixed?{...configured,nodeSnps:undefined,snpChecks:[],mappingVerifiedAt:0,matchReused:true,updatedAt:0}:direct&&direct.target!==name?direct:null;
     const mappingValid=!alias||alias.matchReused||now-(alias.mappingVerifiedAt??alias.updatedAt)<TTL;
     if(!mappingValid)return null;
     const target=alias?.target||name;
@@ -96,13 +98,14 @@ export class AncientEngine {
       current={...replacement,marker:name,...(alias?{nodeSnps:alias.nodeSnps,snpChecks:alias.snpChecks,mapping:alias.mapping,mappingReady:true,matchReused:!!known,mappingVerifiedAt:alias.mappingVerifiedAt??alias.updatedAt}:{})};
       await this.putCache(current);
     }
-    return current&&(!known||current.target===known.target)&&fresh(current,now)?current:null;
+    return current&&(!fixed||current.target===configured.target)&&(!known||current.target===known.target)&&fresh(current,now)?current:null;
   }
   async getBadge(name:string):Promise<BadgeCount|null>{
     const cached=await this.getCached(name,'direct');let result=cached?knownDirectCount(cached,this.io.now()):null;
     for(const scope of ['direct','downstream']){
       const id=await this.io.get(profileText(`anc.pending.fast4.${name}.${scope}`));const job=id?await this.io.get(jobKey(id)):null;
       if(!job||job.marker!==name||job.complete)continue;
+      const configured=resolveTarget(name);if(configured.target!==name&&job.target!==configured.target)continue;
       const partial=knownDirectCount(job,this.io.now());
       if(partial&&(!result||job.createdAt>result.updatedAt))result=partial;
     }
@@ -110,13 +113,15 @@ export class AncientEngine {
   }
   async start(name:string,scope:'direct'|'downstream',refresh=false,values?:unknown):Promise<QueryResult>{
     const m=marker(name);if(!m)throw Error('无效支系标记');let nodeSnps=values===undefined?undefined:snps(values);if(nodeSnps&&!nodeSnps.length)throw Error('尚未读取到节点SNP列表，请等待树加载后重试');
-    const stored=!refresh?await loadMatch(this.io,m):null;const known=stored&&(values===undefined||JSON.stringify(stored.nodeSnps)===JSON.stringify(nodeSnps))?stored:null;
+    const configured=resolveTarget(m);const fixed=configured.target!==m;
+    const stored=!refresh?await loadMatch(this.io,m):null;const known=stored&&(!fixed||stored.target===configured.target)&&(values===undefined||JSON.stringify(stored.nodeSnps)===JSON.stringify(nodeSnps))?stored:null;
+    if(fixed)nodeSnps=undefined;
     if(known)nodeSnps=known.nodeSnps;
     if(!refresh){const cached=await this.getCached(m,scope);if(cached&&fresh(cached,this.io.now())&&(!known||cached.target===known.target)&&(values===undefined||JSON.stringify(cached.nodeSnps)===JSON.stringify(nodeSnps))){if(cached.scope==='downstream'&&cached.projectedVersion!==1)await this.cacheResult(cached);const copy={...cached,...(known?{matchReused:true,mappingVerifiedAt:known.verifiedAt,nodeSnps:known.nodeSnps,snpChecks:known.snpChecks,mapping:known.mapping}:{}),id:this.io.id(),cached:true};await this.io.set(jobKey(copy.id),copy);return copy;}}
     const resolved=known?{target:known.target,mapping:known.mapping}:resolveTarget(m);
     if(!refresh){
       const pendingId=await this.io.get(profileText(`anc.pending.fast4.${m}.${scope}`));const pending=pendingId?await this.io.get(jobKey(pendingId)):null;
-      if(pending&&(!known||pending.mappingReady&&pending.target===known.target)&&!pending.complete&&pending.status!=='unmatched'&&(values===undefined||JSON.stringify(pending.nodeSnps)===JSON.stringify(nodeSnps))&&this.io.now()-pending.createdAt<TTL&&!this.active.has(pending.id)){
+      if(pending&&(!fixed||pending.target===configured.target&&pending.mappingReady)&&(!known||pending.mappingReady&&pending.target===known.target)&&!pending.complete&&pending.status!=='unmatched'&&(values===undefined||JSON.stringify(pending.nodeSnps)===JSON.stringify(nodeSnps))&&this.io.now()-pending.createdAt<TTL&&!this.active.has(pending.id)){
         // Give the reopened page its own task ID; a tab restored after browser
         // restart must not need the previous tab ID to find its checkpoint.
         const recovered:QueryResult={...pending,...(known?{matchReused:true,mappingVerifiedAt:known.verifiedAt}:{}),id:this.io.id(),status:'paused',syncToken:'',cached:false,message:'找到未完成的查询，点击“继续查询”恢复，或打开TheYtree同步'};await this.save(recovered);return recovered;

@@ -13,11 +13,12 @@ const ft=JSON.parse(readFileSync('tests/fixtures/ancient/FT130664-equivalent.jso
 const by=JSON.parse(readFileSync('tests/fixtures/ancient/BY136818-equivalent.json','utf8'));
 const p=f.searches[0].page;
 const tree={code:1,data:{ytree:[...p.branches.map((b:any)=>({hid:b.id,parent:b.parent,name:b.marker,isParent:b.pending?1:0})),...p.samples.map((s:any)=>({sid:s.au.slice(2),name:s.name,parent:s.parentId,haplogroup:s.marker,stype:2,sid_encrypted:s.url.split('/').at(-1).replace('.html','')}))]}};
-async function run(loggedIn:boolean){
+async function run(loggedIn:boolean,confirmedAlias=false){
  const store=new Map();let seq=0;const requests:any[]=[];
  const io:IO={get:async k=>structuredClone(store.get(k)),set:async(k,v)=>{store.set(k,structuredClone(v));},now:()=>Date.now(),id:()=>`token-${++seq}`,request:async()=>{throw Error('Background must not request authenticated SNPs');}};
  const engine=new AncientEngine(io);
  const j:QueryResult={id:'runtime',marker:f.marker,target:f.marker,nodeSnps:f.nodeSnps,snpChecks:f.searches.map((r:any)=>checkSnp(r.page,r.snp,f.nodeSnps)),mappingReady:false,scope:'direct',status:'sync',mapping:'',createdAt:Date.now(),updatedAt:Date.now(),cached:false,complete:false,samples:[],unknown:[],branches:[],checked:[],queue:[],details:[],failures:[],excluded:0,message:''};await engine.save(j);
+ if(confirmedAlias){j.target='O-FT130664';j.mappingReady=true;j.nodeSnps=undefined;j.snpChecks=[];await engine.save(j);}
  const dom=new JSDOM('<body></body>',{url:ft.source,runScripts:'outside-only'});const w=dom.window as any;
  w.AbortSignal=AbortSignal;
  w.fetch=async(url:string,opts:any)=>{requests.push({url,credentials:opts.credentials});let body;
@@ -50,4 +51,9 @@ test('bundled source content script uses normal same-origin login and finishes t
 });
 test('logged-out response remains incomplete and reports login requirement to 23mofang',async()=>{
  const {job,requests}=await run(false);assert.equal(job.complete,false);assert.equal(job.status,'sync');assert.equal(job.samples.length,0);assert.match(job.message,/正常登录/);assert.equal(requests.length,1);
+});
+
+test('confirmed aliases without a runtime SNP list are not rejected as missing same-name nodes',async()=>{
+ const {job,requests}=await run(true,true);assert.equal(job.complete,true);assert.equal(job.samples.length,2);
+ assert.ok(requests.every(r=>!r.url.includes('getEquivalentMutationsDetail')&&!r.url.includes('?snp=')));
 });

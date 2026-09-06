@@ -12,6 +12,7 @@ shutil.copytree(root / 'dist', bundle / 'extension', dirs_exist_ok=True)
 shutil.copy2(root / 'README.md', bundle / '安装与使用说明.md')
 shutil.copy2(root / 'VALIDATION.md', bundle / '验证记录.md')
 shutil.copy2(root / 'assets' / 'region-coverage.md', bundle / '行政区域补图核查.md')
+shutil.copy2(root / 'assets' / 'letter-node-audit.md', bundle / '字母父系节点核查.md')
 
 installer = release / f'23魔方区县地图-v{version}-安装包.zip'
 with zipfile.ZipFile(installer, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
