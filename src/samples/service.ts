@@ -31,6 +31,18 @@ export async function query(io:IO,provider:Provider,value:string,refresh:boolean
   const url=treeLink(provider,target),base:Result={provider,marker:name,target,url,mapping,nodes:[],updatedAt:io.now(),complete:false,status:'error',message:''};
   let request=provider==='ftdna'?`https://discover.familytreedna.com/resources/classictree-y/${encodeURIComponent(target)}.json`:provider==='theytree'?`https://www.theytree.com/api/ysnp/theytree/?haplogroup=${encodeURIComponent(target)}`:url;
   let response=await io.request(request,signal);if(signal.aborted)throw Error('已取消');
+  if(provider==='yfull'&&response.status===404){
+    // Existing root aliases only propose a URL; YFull's own root SNP list must
+    // independently confirm the primary marker before any samples are adopted.
+    const proposed=resolveTarget(name).target;
+    if(/^[A-Z]$/.test(proposed)&&proposed!==name&&name.includes('-')){
+      const candidateUrl=treeLink('yfull',proposed);const candidate=await io.request(candidateUrl,signal);if(signal.aborted)throw Error('已取消');
+      if(candidate.status===200&&candidate.body.length<=8_000_000&&new URL(candidate.url).origin===new URL(candidateUrl).origin){
+        const root=yfull(candidate.body).find(n=>n.name===proposed&&!n.parent);
+        if(root?.snps.includes(name.slice(name.indexOf('-')+1))){response=candidate;request=candidateUrl;}
+      }
+    }
+  }
   // Discover resolves aliases before requesting its canonical static file. Missing
   // alias filenames can return AccessDenied (403), not just 404. A search hit alone
   // is insufficient: require the canonical root's own variants to contain the SNP.

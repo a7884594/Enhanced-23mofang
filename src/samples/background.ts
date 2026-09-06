@@ -1,5 +1,6 @@
 import {RequestGate,type IO} from '../ancient/engine';
 import {query} from './service';
+import {nearest} from './nearest';
 const gate:RequestGate=((globalThis as any).__mofangSharedGate??=new RequestGate());
 let writes:Promise<unknown>=Promise.resolve();
 async function save(key:string,value:any){
@@ -23,9 +24,9 @@ chrome.runtime.onMessage.addListener((m,sender,reply)=>{
     if(m.type==='samples.begin'){for(const c of active.get(tab)?.controls||[])c.abort();const token=crypto.randomUUID();active.set(tab,{token,controls:new Set()});return {token};}
     const task=active.get(tab);if(!task||m.token!==task.token)throw Error('查询已切换或取消');
     if(m.type==='samples.cancel'){for(const c of task.controls)c.abort();active.delete(tab);return true;}
-    if(m.type!=='samples.query')throw Error('未知请求');
+    if(!['samples.query','samples.nearest'].includes(m.type))throw Error('未知请求');
     if(task.controls.size>=3)throw Error('当前请求尚未完成');const c=new AbortController();task.controls.add(c);
-    try{return await query(io,m.provider,m.marker,!!m.refresh,c.signal,!!m.more);}finally{task.controls.delete(c);}
+    try{return m.type==='samples.nearest'?await nearest(io,m.provider,m.marker,m.ancestors,c.signal):await query(io,m.provider,m.marker,!!m.refresh,c.signal,!!m.more);}finally{task.controls.delete(c);}
   })().then(value=>reply({ok:true,value}),error=>reply({ok:false,error:String(error)}));return true;
 });
 chrome.tabs.onRemoved.addListener(tab=>{for(const c of active.get(tab)?.controls||[])c.abort();active.delete(tab);});

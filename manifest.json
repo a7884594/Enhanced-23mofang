@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "23魔方 · 地域地图与样本查询",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "全国区县/市级地图，TheYtree、YFull、FTDNA公开古DNA、科研与匿名现代样本查询。",
   "permissions": ["storage"],
   "host_permissions": ["https://www.theytree.com/*","https://www.yfull.com/*","https://discover.familytreedna.com/*"],
@@ -9,7 +9,7 @@
   "minimum_chrome_version": "111",
   "icons": {"48":"icons/48.png","128":"icons/128.png"},
   "content_scripts": [
-    {"matches":["https://www.23mofang.com/*"],"js":["bridge.js","ancient/mofang-bridge.js","research/mofang-bridge.js"],"run_at":"document_start","world":"MAIN"},
+    {"matches":["https://www.23mofang.com/*"],"js":["bridge.js","ancient/mofang-bridge.js","research/mofang-bridge.js","samples/ancestry-bridge.js"],"run_at":"document_start","world":"MAIN"},
     {"matches":["https://www.23mofang.com/*"],"js":["content.js","ancient/ui.js","research/ui.js","samples/ui.js"],"run_at":"document_start"},
     {"matches":["https://www.theytree.com/tree/*"],"js":["ancient/source-bridge.js","research/source-bridge.js"],"run_at":"document_start","world":"MAIN"},
     {"matches":["https://www.theytree.com/tree/*"],"js":["ancient/source.js","research/source.js"],"run_at":"document_idle"}

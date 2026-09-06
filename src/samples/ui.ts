@@ -1,6 +1,7 @@
 import {marker,treeMarker} from '../ancient/model';
 import {formationAge} from '../ancient/age';
 import {labels,providers,select,treeLink,type Provider,type Result,type Kind} from './model';
+import type {Hint} from './nearest';
 const NS='http://www.w3.org/2000/svg';
 const style=`:host{font:13px/1.6 system-ui,'Microsoft Yahei';color:#493e30}*{box-sizing:border-box}.panel{position:fixed;right:18px;top:64px;bottom:18px;width:460px;max-width:calc(100vw - 24px);background:#fffdf9;border:1px solid #dbcdb8;border-radius:14px;box-shadow:0 10px 40px #0002;z-index:2147483601;display:flex;flex-direction:column;overflow:hidden}header{padding:16px;background:#f7efe1}h2{font-size:19px;margin:0}button,select,input{font:inherit;color:inherit;border:1px solid #d9c7aa;border-radius:5px;background:white;padding:5px 8px}button{cursor:pointer}.close{float:right}.controls{padding:10px 16px;display:flex;gap:6px;flex-wrap:wrap}.body{overflow:auto;flex:1;padding:0 16px 16px;min-height:0}section{border-top:1px solid #e7ddce;padding-top:8px;margin-top:8px}h3{font-size:15px;margin:5px 0}.note{font-size:11px;color:#88785e;white-space:pre-line}.card{border:1px solid #e6ddce;padding:9px;margin:8px 0;border-radius:7px;overflow-wrap:anywhere}.links{display:flex;gap:10px}a{color:#35738a}.error{color:#a45836}footer{padding:8px 16px;border-top:1px solid #e7ddce;font-size:11px}input{width:100%}[hidden]{display:none!important}@media(max-width:700px){.panel{inset:0;width:100%;max-width:none;border-radius:0}}`;
 async function api(m:any){const r=await chrome.runtime.sendMessage(m);if(!r?.ok)throw Error(String(r?.error||'扩展后台未响应').replace(/^(?:Error:\s*)+/,''));return r.value;}
@@ -11,17 +12,27 @@ export function bootSamples(){
   document.body.append(host);const q=<T extends HTMLElement=HTMLElement>(s:string)=>shadow.querySelector<T>(s)!;
   let current='',route='',serial=0,token='',results=new Map<Provider,Result>(),errors=new Map<Provider,string>(),loading=new Set<Provider>();
   const pages=new Map<Provider,number>();
+  const hints=new Map<Provider,Hint>(),hintLoading=new Set<Provider>();
   function el(tag:string,value:string,cls=''){const e=document.createElement(tag);e.textContent=value;if(cls)e.className=cls;return e;}
   function link(parent:Element,value:string,url:string){const a=el('a',value) as HTMLAnchorElement;a.href=url;a.target='_blank';a.rel='noopener noreferrer';parent.append(a);}
+  function ancestors(name:string):Promise<string[]>{
+    const request=crypto.randomUUID(),page=location.href,channel='mofang-samples-ancestry/v1';
+    return new Promise((resolve,reject)=>{const done=(e:MessageEvent)=>{const d=e.data;if(e.source!==window||e.origin!==location.origin||d?.channel!==channel||d.type!=='ancestors'||d.request!==request||d.marker!==name||d.route!==page||location.href!==page)return;clearTimeout(timer);window.removeEventListener('message',done);resolve(d.ancestors);};const timer=setTimeout(()=>{window.removeEventListener('message',done);reject(Error('未能读取上游路径，请重新加载扩展并刷新网页'));},3000);window.addEventListener('message',done);window.postMessage({channel,type:'read-ancestors',marker:name,request},location.origin);});
+  }
+  function hintEntry(parent:Element,provider:Provider){
+    const b=el('button',hintLoading.has(provider)?'正在核查上游…':'查找最近已核实上游') as HTMLButtonElement;b.disabled=!token||hintLoading.has(provider);parent.append(b);
+    const h=hints.get(provider);if(h){parent.append(el('div',h.message,'note'));if(h.found&&h.url)link(parent,`上游参考：${h.target} ↗（非当前节点）`,h.url);}
+    b.onclick=async()=>{const version=serial,name=current;hintLoading.add(provider);render();try{const path=await ancestors(name);if(version!==serial)return;const h=await api({type:'samples.nearest',token,provider,marker:name,ancestors:path});if(version===serial)hints.set(provider,h);}catch(e){if(version===serial)hints.set(provider,{found:false,checked:0,message:String(e)});}finally{if(version===serial){hintLoading.delete(provider);render();}}};
+  }
   function render(){
     const kind=q<HTMLSelectElement>('[aria-label="样本类别"]').value;const downstream=q<HTMLSelectElement>('[aria-label="范围"]').value==='downstream';const needle=q<HTMLInputElement>('input').value.trim().toLowerCase();
     q('.body').replaceChildren();
     for(const provider of providers){
       const section=document.createElement('section');section.append(el('h3',labels[provider]));q('.body').append(section);const result=results.get(provider);
       if(loading.has(provider)){section.append(el('p','正在读取公开数据…','note'));continue;}
-      if(!result){section.append(el('p',errors.get(provider)||'尚未查询','error'));link(section,'打开来源页面',treeLink(provider,current));continue;}
+      if(!result){section.append(el('p',errors.get(provider)||'尚未查询','error'));link(section,'打开来源页面',treeLink(provider,current));hintEntry(section,provider);continue;}
       link(section,`${labels[provider]}：${result.target} ↗`,result.url);section.append(el('div',result.mapping,'note'));
-      if(result.status!=='ready'){section.append(el('p',result.message,'error'));continue;}
+      if(result.status!=='ready'){section.append(el('p',result.message,'error'));hintEntry(section,provider);continue;}
       const data=select(result,downstream),matches=(v:string)=>!needle||v.toLowerCase().includes(needle);
       const rows=data.rows.filter(s=>(kind==='all'||s.kind===kind||kind==='personal'&&s.kind==='modern')&&matches([s.id,s.name,s.region,s.node].join(' ')));
       const confirmed=rows.filter(s=>!s.uncertain&&s.kind!=='unknown'&&s.kind!=='modern').length;
@@ -45,12 +56,12 @@ export function bootSamples(){
     }
   }
   async function run(refresh=false){
-    const version=++serial;const name=current;results=new Map();errors=new Map();loading=new Set(providers);pages.clear();render();
+    const version=++serial;const name=current;results=new Map();errors=new Map();loading=new Set(providers);pages.clear();hints.clear();hintLoading.clear();render();
     try{const begun=await api({type:'samples.begin'});if(version!==serial){void api({type:'samples.cancel',token:begun.token}).catch(()=>{});return;}token=begun.token;
       await Promise.all(providers.map(async provider=>{try{const result=await api({type:'samples.query',token,provider,marker:name,refresh});if(version===serial)results.set(provider,result);}catch(e){if(version===serial)errors.set(provider,String(e));}finally{if(version===serial){loading.delete(provider);render();}}}));
     }catch(e){if(version===serial){for(const p of providers)errors.set(p,String(e));loading.clear();render();}}
   }
-  function cancel(){serial++;if(token)void api({type:'samples.cancel',token}).catch(()=>{});token='';for(const p of loading)errors.set(p,'已取消，未记为0条');loading.clear();render();}
+  function cancel(){serial++;if(token)void api({type:'samples.cancel',token}).catch(()=>{});token='';for(const p of hintLoading)hints.set(p,{found:false,checked:0,message:'已取消上游核查'});hintLoading.clear();for(const p of loading)errors.set(p,'已取消，未记为0条');loading.clear();render();}
   function close(){cancel();q('.panel').hidden=true;}
   function open(value:string,kind='all'){const name=marker(value);if(!name)return;current=name;route=location.href;document.dispatchEvent(new CustomEvent('mofang-sample-panel-open',{detail:'multi'}));q('h2').textContent=name+' · 多源样本';q<HTMLSelectElement>('[aria-label="样本类别"]').value=['ancient','scientific','personal'].includes(kind)?kind:'all';q('.panel').hidden=false;q<HTMLInputElement>('input').value='';void run();q('.close').focus();}
   q('.close').onclick=close;q('.cancel').onclick=cancel;q('.refresh').onclick=()=>void run(true);q('input').oninput=render;for(const s of shadow.querySelectorAll('select'))s.onchange=()=>{pages.clear();render();};
