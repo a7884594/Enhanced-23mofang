@@ -95,6 +95,7 @@ export function bootAncientUI(){
       button.dataset.marker=name;
       button.setAttribute('aria-label',`${name} 古DNA`);
       paintAncientBadge(button,counts.get(name)?.count,counts.get(name)?.complete);
+      if(button.getAttribute('aria-hidden')==='true')continue;
       const matrix=node.getScreenCTM();if(!matrix?.a)continue;
       const snp=node.querySelector<SVGGElement>(':scope > .snp-wrapper');const bounds=snp?.getBoundingClientRect();
       const right=bounds?.width?bounds.right:Math.max(...[...node.children].filter(e=>e!==button).map(e=>e.getBoundingClientRect().right));

@@ -77,7 +77,9 @@ test('partial badge shows a plus, transitions to exact count and survives a text
   const doc=parseHTML('<svg><g data-marker="O-F8"><title></title><rect></rect><text></text></g></svg>').document;
   const button=doc.querySelector('g')! as unknown as SVGGElement;paintAncientBadge(button,42,false);assert.equal(button.querySelector('text')?.textContent,'古DNA · 42+');assert.match(button.querySelector('title')!.textContent!,/尚未完整/);
   paintAncientBadge(button,42,true);assert.equal(button.querySelector('text')?.textContent,'古DNA · 42');button.querySelector('text')!.textContent='古';paintAncientBadge(button,42,true);assert.equal(button.querySelector('text')?.textContent,'古DNA · 42');
-  paintAncientBadge(button,0,true);assert.equal(button.querySelector('text')?.textContent,'古DNA · 0');
+  paintAncientBadge(button,0,true);assert.equal(button.querySelector('text')?.textContent,'古DNA · 0');assert.equal(button.style.display,'none');assert.equal(button.getAttribute('tabindex'),'-1');
+  paintAncientBadge(button,undefined);assert.notEqual(button.style.display,'none');assert.equal(button.querySelector('text')?.textContent,'古');assert.equal(button.getAttribute('tabindex'),'0');assert.match(button.querySelector('title')!.textContent!,/尚未确认/);
+  paintAncientBadge(button,42,false);assert.notEqual(button.style.display,'none');assert.equal(button.querySelector('text')?.textContent,'古DNA · 42+');
 });
 test('badge lookup repairs an older complete downstream-only cache without clicking that query',async()=>{
   const h=harness();const j=await settle(h,(await h.engine.start('O-F8','downstream')).id);
