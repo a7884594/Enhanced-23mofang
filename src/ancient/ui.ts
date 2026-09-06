@@ -67,11 +67,13 @@ export function bootAncientUI(){
     set('.time',`${j.cached?'使用缓存 · ':''}更新于 ${new Date(j.updatedAt).toLocaleString()}`);
     q('.snp-evidence').hidden=!j.nodeSnps;
     const evidence=q('.snp-evidence > div');evidence.replaceChildren();
+    if(q<HTMLDetailsElement>('.snp-evidence').open){
     const info=document.createElement('p');info.textContent=`23魔方本节点SNP：${j.nodeSnps?.join(', ')||'尚未读取'}（已核对 ${j.snpChecks?.length??0} / ${j.nodeSnps?.length??0}）`;evidence.append(info);
     for(const c of j.snpChecks||[]){const row=document.createElement('p');row.textContent=`${c.snp} → ${c.target||c.candidate?.marker&&('候选 '+c.candidate.marker)||'未确认对应'}${c.issue?' · '+c.issue:''} `;link(row,'查询依据',`${TY}/tree/${encodeURIComponent(c.target||j.marker)}?snp=${encodeURIComponent(c.snp)}`);evidence.append(row);
       if(c.evidence){const detail=document.createElement('p');detail.textContent=`TheYtree等价SNP：${c.evidence.groups.join(', ')}；共同SNP：${c.evidence.overlap.join(', ')||'无'}；读取时间：${new Date(c.evidence.capturedAt).toLocaleString()}`;evidence.append(detail);}
       if(c.evidence?.ignored?.length){const note=document.createElement('p');note.className='issue';note.textContent=`带注释标记保留原文、未参与匹配：${c.evidence.ignored.join(', ')}`;evidence.append(note);}
       if(c.note){const note=document.createElement('p');note.className='issue';note.textContent=c.note;evidence.append(note);}
+    }
     }
     const failures=q('.failures > div');failures.replaceChildren();for(const f of j.failures){const row=document.createElement('p');row.textContent=`${f.key}：${f.message}`;failures.append(row);}q('.failures').hidden=!j.failures.length;
     if(j.status==='unmatched'){const row=document.createElement('p');link(row,'到TheYtree搜索支系',`${TY}/`);failures.append(row);q('.failures').hidden=false;}
@@ -87,6 +89,7 @@ export function bootAncientUI(){
   function close(){q('.panel').hidden=true;serial++;if(job&&['running','sync'].includes(job.status))void api({type:profileText('anc.cancel'),id:job.id}).catch(()=>{});if(priorFocus instanceof HTMLElement||priorFocus instanceof SVGElement)(priorFocus as HTMLElement).focus?.();}
   document.addEventListener('mofang-sample-panel-open',event=>{if((event as CustomEvent).detail!==(RESEARCH?'research':'ancient')&&!q('.panel').hidden)close();});
   q('.close').onclick=close;document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!q('.panel').hidden)close();});
+  q<HTMLDetailsElement>('.snp-evidence').ontoggle=()=>{if(job&&q<HTMLDetailsElement>('.snp-evidence').open)update(job);};
   for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.onclick=()=>{scope=b.dataset.scope as Scope;void query();};
   q('.refresh').onclick=()=>void query(true);
   for(const [selector,type]of [['.pause',profileText('anc.cancel')],['.resume',profileText('anc.resume')],['.sync',profileText('anc.sync')]])q(selector).onclick=async()=>{if(!job)return;const id=job.id,token=serial;try{const r=await api({type,id});if(token!==serial||job?.id!==id)return;if(r?.id)update(r);else set('.progress','已打开TheYtree，请在正常网页完成同步后回到这里');}catch(e){if(token===serial)set('.progress',String(e));}};

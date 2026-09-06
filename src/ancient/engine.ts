@@ -2,7 +2,7 @@ import {SAMPLE_KIND} from './profile';
 import {profileText} from './profile';
 import {TY,TTL,marker,sourceUrl,queryUrl,nodeUrl,normalizeTree,selectSamples,pathToRoot,dedupe,fresh,type QueryResult,type TreePage,type AncientSample} from './model';
 import {parseDetail} from './parser';
-import {snps,checkSnp,snpUrl,mappingTarget,needsSnpQuery} from './snps';
+import {snps,checkSnp,snpUrl,mappingTarget,needsSnpQuery,rebaseSearch} from './snps';
 import {equivalentEvidence,applyEquivalent,disambiguate,pendingEquivalentCandidates,type EquivalentEvidence} from './equivalent';
 import {directProjections,subtreeProjection} from './projection';
 import {knownDirectCount,type BadgeCount} from './counts';
@@ -12,19 +12,24 @@ export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Prom
 export class SyncRequired extends Error{}
 export const jobKey=(id:string)=>profileText(`anc.job.${id}`);
 export const cacheKey=(m:string,s:string)=>profileText(`anc.cache.fast4.${m}.${s}`);
-/** Per-worker global request queue: single concurrency and >=500ms between starts. */
+/** Shared gate: up to two SNP searches; other requests remain exclusive. */
 export class RequestGate {
   private tail:Promise<any>=Promise.resolve();private next=0;
+  private active=new Map<Promise<any>,boolean>();
   fetch(url:string,signal:AbortSignal){
     const work=this.tail.catch(()=>{}).then(async()=>{
+      const u=new URL(url);const search=u.pathname==='/api/ysnp/theytree/'&&u.searchParams.has('snp');
+      while(this.active.size&&(!search||this.active.size>=2||[...this.active.values()].some(v=>!v))){await Promise.race([...this.active.keys()].map(p=>p.catch(()=>{})));if(signal.aborted)throw new DOMException('Cancelled','AbortError');}
       const wait=Math.max(0,this.next-Date.now());if(wait)await new Promise(r=>setTimeout(r,wait));
       if(signal.aborted)throw new DOMException('Cancelled','AbortError');
       this.next=Date.now()+500;
       const timeout=AbortSignal.timeout(25000);const control=new AbortController();
       const abort=()=>control.abort();signal.addEventListener('abort',abort,{once:true});timeout.addEventListener('abort',abort,{once:true});
-      try{const response=await fetch(url,{credentials:'omit',signal:control.signal,redirect:'follow',referrerPolicy:'no-referrer'});return {status:response.status,url:response.url,body:await response.text()};}
-      finally{signal.removeEventListener('abort',abort);timeout.removeEventListener('abort',abort);}
-    });this.tail=work;return work;
+      const responseTask=(async()=>{try{const response=await fetch(url,{credentials:'omit',signal:control.signal,redirect:'follow',referrerPolicy:'no-referrer'});return {status:response.status,url:response.url,body:await response.text()};}
+      finally{signal.removeEventListener('abort',abort);timeout.removeEventListener('abort',abort);}})();
+      this.active.set(responseTask,search);void responseTask.finally(()=>this.active.delete(responseTask)).catch(()=>{});
+      return {responseTask};
+    });this.tail=work;return work.then(v=>v.responseTask);
   }
 }
 export class AncientEngine {
@@ -187,7 +192,9 @@ export class AncientEngine {
   async sourceSnp(id:string,value:string,page:TreePage){
     const j:QueryResult=await this.io.get(jobKey(id));
     if(!j||j.status==='paused'||!j.nodeSnps?.includes(value)||j.mappingReady)throw Error('SNP同步任务已过期');
-    j.snpChecks=[...(j.snpChecks||[]).filter(v=>v.snp!==value),checkSnp(page,value,j.nodeSnps)];
+    const check=checkSnp(page,value,j.nodeSnps);
+    if((!check.issue||check.candidate)&&JSON.stringify(check).length<100000)await this.io.set(`mofang.snp-search.v1.${value}`,{at:this.io.now(),check:rebaseSearch(check,[])});
+    j.snpChecks=[...(j.snpChecks||[]).filter(v=>v.snp!==value),check];
     if(j.nodeSnps.every(s=>j.snpChecks!.some(v=>v.snp===s)))this.resolveMapping(j);
     j.message=j.mappingReady?profileText('SNP对应已确认，正在读取古DNA'):j.message;
     await this.save(j);return j;
@@ -228,22 +235,28 @@ export class AncientEngine {
     try{
       j.status='running';
       if(j.nodeSnps&&!j.mappingReady){
-        for(const value of j.nodeSnps){
-          if(!needsSnpQuery(j.snpChecks,value))continue;
-          const key=profileText(`anc.snp4.${j.nodeSnps.join(',')}.${value}`);
-          const cached=await this.io.get(key);
-          let check;
-          if(!j.forceRefresh&&cached&&this.io.now()-cached.at<TTL)check=cached.check;
-          else {
+        const values=j.nodeSnps.filter(value=>needsSnpQuery(j.snpChecks,value));
+        let reused=0,checkpointAt=0;
+        for(let offset=0;offset<values.length;offset+=2){
+          if(c.signal.aborted)return;
+          const batch=await Promise.allSettled(values.slice(offset,offset+2).map(async value=>{
+            const key=`mofang.snp-search.v1.${value}`;
+            const cached=!j.forceRefresh?await this.io.get(key):null;
+            if(cached&&cached.check?.snp===value&&this.io.now()-cached.at<TTL){reused++;return rebaseSearch(cached.check,j.nodeSnps!);}
             const page=normalizeTree(JSON.parse(await this.request(snpUrl(value),c)));
             if(!page.valid)throw new SyncRequired(page.reason);
-            check=checkSnp(page,value,j.nodeSnps);
-            if(!check.issue)await this.io.set(key,{at:this.io.now(),check});
-          }
+            const check=checkSnp(page,value,j.nodeSnps!);
+            if(!c.signal.aborted&&(!check.issue||check.candidate)&&JSON.stringify(check).length<100000)await this.io.set(key,{at:this.io.now(),check:rebaseSearch(check,[])});
+            return check;
+          }));
           if(c.signal.aborted)return;
-          j.snpChecks=[...(j.snpChecks||[]).filter(v=>v.snp!==value),check];
-          j.message=`正在核对节点SNP：${j.snpChecks.length} / ${j.nodeSnps.length}`;
-          if(c.signal.aborted)return;await this.save(j);
+          let failure:PromiseRejectedResult|undefined;
+          for(const result of batch){if(result.status==='fulfilled')j.snpChecks=[...(j.snpChecks||[]).filter(v=>v.snp!==result.value.snp),result.value];else failure??=result;}
+          j.message=`正在核对节点SNP：${j.snpChecks?.length||0} / ${j.nodeSnps.length} · 本轮复用 ${reused} 条 · 最多2个请求`;
+          if(failure||offset+2>=values.length||this.io.now()-checkpointAt>=300){await this.save(j);checkpointAt=this.io.now();}
+          if(failure)throw failure.reason;
+          // Yield even on an all-cache batch so a large block cannot monopolize the worker.
+          await new Promise(r=>setTimeout(r,0));
         }
         for(const c of pendingEquivalentCandidates(j.snpChecks||[])){
           const e=await this.io.get(profileText(`anc.equivalent3.${c.id}.${c.marker}`));
