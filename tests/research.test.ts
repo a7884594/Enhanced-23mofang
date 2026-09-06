@@ -61,7 +61,7 @@ test('both worker handlers share one gate but keep task owners, results and mess
 });
 test('both UIs coexist with separate buttons, messages and panels; research has no age cutoff',async()=>{
  const bundles=await Promise.all([false,true].map(async research=>(await build({entryPoints:['src/ancient/ui.ts'],bundle:true,write:false,format:'iife',define:{__RESEARCH__:String(research)}})).outputFiles[0].text));
- const dom=new JSDOM('<div class="tree-wrapper"><svg><g class="node"><text class="label">O-F8</text><text class="time">形成时间距今6910年</text></g><g class="node"><text class="label">O-Y5702</text><text class="time">形成时间距今410年</text></g><g class="node"><text class="label">O-UNKNOWN1</text></g></svg></div>',{url:'https://www.23mofang.com/ancestry/ytree/O-F8',runScripts:'outside-only',pretendToBeVisual:true});
+ const dom=new JSDOM('<div class="tree-wrapper"><svg><g class="node"><text class="label">O-F8</text><text class="time">形成时间距今6910年</text></g><g class="node"><text class="label">O-Y5702</text><text class="time">形成时间距今199年</text></g><g class="node"><text class="label">O-UNKNOWN1</text></g></svg></div>',{url:'https://www.23mofang.com/ancestry/ytree/O-F8',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window as any,calls:any[]=[];w.SVGElement.prototype.getScreenCTM=()=>({a:1,e:0});
  w.chrome={runtime:{sendMessage:async(m:any)=>{calls.push(m);if(m.type.endsWith('.counts'))return {ok:true,value:{}};return {ok:true,value:{id:'demo',marker:m.marker,target:m.marker,scope:'direct',status:'paused',complete:false,mapping:'同名',samples:[],unknown:[],branches:[],checked:[],queue:[],details:[],failures:[],updatedAt:Date.now(),message:'模拟暂停'}};}}};
  try{
