@@ -65,30 +65,38 @@ export class AncientEngine {
   }
   async getCached(name:string,scope:'direct'|'downstream'):Promise<QueryResult|null>{
     const now=this.io.now();let current:QueryResult|null=await this.readCompatibleCache(name,scope);
+    const known=await loadMatch(this.io,name);
+    // A confirmed identity can exist without any completed sample query under
+    // the 23mofang name. Ancestor projections are keyed by the source name.
+    if(known&&current&&current.target!==known.target)current=null;
     if(scope==='direct'){
       const whole=await this.readCompatibleCache(name,'downstream');
-      if(whole&&fresh(whole,now)&&(!current||whole.updatedAt>current.updatedAt||whole.projectedVersion!==1)){
+      if(whole&&(!known||whole.target===known.target)&&fresh(whole,now)&&(!current||whole.updatedAt>current.updatedAt||whole.projectedVersion!==1)){
         await this.cacheResult({...whole,projectedVersion:undefined});
         current=await this.readCompatibleCache(name,scope);
       }
     }
     const direct:QueryResult|null=scope==='direct'?current:await this.readCompatibleCache(name,'direct');
-    const alias=direct&&direct.target!==name?direct:null;
+    const alias=known?{...known,mappingVerifiedAt:known.verifiedAt,matchReused:true,updatedAt:known.verifiedAt}:direct&&direct.target!==name?direct:null;
     const mappingValid=!alias||alias.matchReused||now-(alias.mappingVerifiedAt??alias.updatedAt)<TTL;
     if(!mappingValid)return null;
     const target=alias?.target||name;
     const canonical:QueryResult|null=alias?await this.io.get(cacheKey(target,'direct'))||null:direct;
     let replacement:QueryResult|null=null;
     if(scope==='direct'&&alias&&canonical&&fresh(canonical,now)&&(!current||canonical.updatedAt>current.updatedAt))replacement=canonical;
+    if(scope==='downstream'&&alias){
+      const whole=await this.readCompatibleCache(target,'downstream');
+      if(whole&&fresh(whole,now)&&(!current||whole.updatedAt>current.updatedAt))replacement=whole;
+    }
     if(scope==='downstream'&&canonical?.cacheOrigin){
       const origin=canonical.cacheOrigin;const ancestor=await this.io.get(cacheKey(origin.marker,'downstream'));
-      if(ancestor&&fresh(ancestor,now)&&ancestor.updatedAt===origin.at&&(!current||ancestor.updatedAt>current.updatedAt))replacement=subtreeProjection(ancestor,target);
+      if(ancestor&&fresh(ancestor,now)&&ancestor.updatedAt===origin.at&&(!current||ancestor.updatedAt>current.updatedAt)&&(!replacement||ancestor.updatedAt>replacement.updatedAt))replacement=subtreeProjection(ancestor,target);
     }
     if(replacement){
-      current={...replacement,marker:name,...(alias?{nodeSnps:alias.nodeSnps,snpChecks:alias.snpChecks,mapping:alias.mapping,mappingVerifiedAt:alias.mappingVerifiedAt??alias.updatedAt}:{})};
+      current={...replacement,marker:name,...(alias?{nodeSnps:alias.nodeSnps,snpChecks:alias.snpChecks,mapping:alias.mapping,mappingReady:true,matchReused:!!known,mappingVerifiedAt:alias.mappingVerifiedAt??alias.updatedAt}:{})};
       await this.putCache(current);
     }
-    return current&&fresh(current,now)?current:null;
+    return current&&(!known||current.target===known.target)&&fresh(current,now)?current:null;
   }
   async getBadge(name:string):Promise<BadgeCount|null>{
     const cached=await this.getCached(name,'direct');let result=cached?knownDirectCount(cached,this.io.now()):null;

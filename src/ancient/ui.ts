@@ -89,7 +89,7 @@ export function bootAncientUI(){
   q('input').oninput=renderRows;for(const s of shadow.querySelectorAll('select'))s.onchange=renderRows;
   const svgNS='http://www.w3.org/2000/svg';let lastCountRequest='';let countGeneration=0;
   function invalidateCounts(){lastCountRequest='';countGeneration++;}
-  chrome.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[profileText('anc.cacheRevision')])invalidateCounts();});
+  chrome.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&(changes[profileText('anc.cacheRevision')]||Object.keys(changes).some(k=>k.startsWith('mofang.node-match.v1.'))))invalidateCounts();});
   function updateBadges(){for(const e of document.querySelectorAll<SVGGElement>(profileText('[data-mofang-ancient]')))paintAncientBadge(e,counts.get(e.dataset.marker||'')?.count,counts.get(e.dataset.marker||'')?.complete);const entry=document.querySelector<HTMLButtonElement>(profileText('#mofang-ancient-entry'));if(entry)paintAnalysisEntry(entry,counts.get(entry.dataset.marker||'')?.count,counts.get(entry.dataset.marker||'')?.complete);}
   function scan(){
     const route=treeMarker(location.pathname);if(!route){document.querySelectorAll(profileText('[data-mofang-ancient],#mofang-ancient-entry')).forEach(e=>e.remove());if(!q('.panel').hidden)close();return;}
