@@ -4,10 +4,13 @@ import {resolveTarget} from '../ancient/aliases';
 import type {IO} from '../ancient/engine';
 import {yfull,ftdna,theytree} from './adapters';
 import {providers,rootName,treeLink,type Provider,type Result} from './model';
+import {YFULL_ROOT_ALIASES} from './yfull-roots';
 const TTL=7*86400000;
 export async function query(io:IO,provider:Provider,value:string,refresh:boolean,signal:AbortSignal,more=false):Promise<Result>{
   const name=marker(value);if(!name||!providers.includes(provider))throw Error('无效支系或来源');
   let target=name,mapping='同名标记对应；挂载关系以该来源为准';
+  const yfullRoot=provider==='yfull'?YFULL_ROOT_ALIASES[name]:undefined;
+  if(yfullRoot)target=yfullRoot.target;
   if(provider==='theytree'){const known=await loadMatch(io,name);target=known?.target||resolveTarget(name).target;if(target!==name)mapping='复用TheYtree已核实对应；不推及其他来源';}
   const key=`samples.v2.${provider}.${name}.${target}`;const cached=await io.get(key);
   if(!refresh&&cached?.status==='ready'&&cached.updatedAt<=io.now()&&io.now()-cached.updatedAt<TTL){
@@ -31,18 +34,6 @@ export async function query(io:IO,provider:Provider,value:string,refresh:boolean
   const url=treeLink(provider,target),base:Result={provider,marker:name,target,url,mapping,nodes:[],updatedAt:io.now(),complete:false,status:'error',message:''};
   let request=provider==='ftdna'?`https://discover.familytreedna.com/resources/classictree-y/${encodeURIComponent(target)}.json`:provider==='theytree'?`https://www.theytree.com/api/ysnp/theytree/?haplogroup=${encodeURIComponent(target)}`:url;
   let response=await io.request(request,signal);if(signal.aborted)throw Error('已取消');
-  if(provider==='yfull'&&response.status===404){
-    // Existing root aliases only propose a URL; YFull's own root SNP list must
-    // independently confirm the primary marker before any samples are adopted.
-    const proposed=resolveTarget(name).target;
-    if(/^[A-Z]$/.test(proposed)&&proposed!==name&&name.includes('-')){
-      const candidateUrl=treeLink('yfull',proposed);const candidate=await io.request(candidateUrl,signal);if(signal.aborted)throw Error('已取消');
-      if(candidate.status===200&&candidate.body.length<=8_000_000&&new URL(candidate.url).origin===new URL(candidateUrl).origin){
-        const root=yfull(candidate.body).find(n=>n.name===proposed&&!n.parent);
-        if(root?.snps.includes(name.slice(name.indexOf('-')+1))){response=candidate;request=candidateUrl;}
-      }
-    }
-  }
   // Discover resolves aliases before requesting its canonical static file. Missing
   // alias filenames can return AccessDenied (403), not just 404. A search hit alone
   // is insufficient: require the canonical root's own variants to contain the SNP.
@@ -71,6 +62,10 @@ export async function query(io:IO,provider:Provider,value:string,refresh:boolean
   const raw=provider==='yfull'?null:JSON.parse(response.body);
   const nodes=provider==='yfull'?yfull(response.body):provider==='ftdna'?ftdna(raw):theytree(raw);
   let root=nodes.find(n=>n.name===target);
+  if(yfullRoot){
+    if(!root||root.parent||!root.snps.includes(yfullRoot.snp))return {...base,status:'unmatched',message:'YFull根节点未返回预期SNP证据，本次未采用已有根节点对应。'};
+    mapping=`YFull根节点SNP已核实：${name} → ${target}（${yfullRoot.snp}）；挂载关系以YFull为准`;
+  }
   if(!root){
     const snp=target.includes('-')?target.slice(target.indexOf('-')+1):'';
     const candidates=snp?nodes.filter(n=>!n.name.endsWith('*')&&n.name.split('-')[0]===target.split('-')[0]&&n.snps.includes(snp)):[];

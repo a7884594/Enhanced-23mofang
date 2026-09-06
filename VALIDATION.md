@@ -1,5 +1,12 @@
 # 验证记录
 
+## 1.5.1 YFull A—T根节点
+
+- 20入口逐一实际HTTP读取根头部，保存根名、SNP组、URL、状态；9组异名均有源站根SNP证据。A-P305与A路径404，A1的根SNP含P305。其余8组根别名证据见独立核查表。
+- 独立YFull表替代借用TheYtree候选表，直接请求规范目标，缓存按源站规范目标隔离；仍核对当次返回根SNP，不能把子支携带同名SNP作为根证据。
+- TypeScript检查及150项自动测试通过。20入口用真实根SNP组构造最小页面模拟单次请求及缓存，不代表实际查询了20棵完整子树。没有修改TheYtree对应表；未重新安装扩展验证完整样本查询。
+
+
 ## 1.5.0 23魔方SNP查询探索与接入
 
 - 实际读取报告入口HTML、6fa5f6e公共应用脚本、02ca168宗亲分化树脚本、5b2b121公开树脚本。确认路由/report/gene-origin/my-origin、showHaploidPosition字符串解析方式、getTreeDetailByNode及getTreeNodeById只读接口，以及个人报告postHaploidDetail的区别。
