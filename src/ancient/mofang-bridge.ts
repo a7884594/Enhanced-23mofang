@@ -26,7 +26,7 @@ if(typeof window!=='undefined')window.addEventListener('message',async e=>{
   if(e.source!==window||e.origin!==location.origin||e.data?.channel!==A_CHANNEL||e.data.type!=='read-snps')return;
   const name=marker(e.data.marker);if(!name)return;
   const route=location.href;let values=localSnps(name,document,(window as any).$nuxt);
-  if(!values.length){
+  if(!values.length&&!e.data.localOnly){
     if(!fetching.has(name))fetching.set(name,(async()=>{try{
       const r=await fetch(`/ancestry/ytree/${encodeURIComponent(name)}`,{credentials:'omit',signal:AbortSignal.timeout(15000)});
       return r.ok&&new URL(r.url).origin===location.origin?htmlSnps(await r.text(),name):[];
