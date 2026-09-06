@@ -34,11 +34,11 @@ test('upstream projections update a verified renamed child without its own compl
   const start=await h.engine.start(name,'direct');assert.equal(start.cached,true);assert.equal(start.matchReused,true);
 });
 test('unknown mapping stays unknown; late shared mapping immediately exposes existing projections',async()=>{
-  const h=harness();await h.engine.getCached(ancestor,'direct');assert.equal(await h.engine.getBadge(name),null);
-  h.data.set(matchKey(name),known);assert.equal((await h.engine.getBadge(name))?.count,2);
+  const alias="O-UNVERIFIED1";const h=harness();await h.engine.getCached(ancestor,'direct');assert.equal(await h.engine.getBadge(alias),null);
+  h.data.set(matchKey(alias),{...known,marker:alias});assert.equal((await h.engine.getBadge(alias))?.count,2);
   const newer={...h.data.get(cacheKey(target,'direct')),samples:[],updatedAt:h.io.now()};h.data.set(cacheKey(target,'direct'),newer);
-  assert.deepEqual(await h.engine.getBadge(name),{count:0,complete:true,updatedAt:newer.updatedAt});
-  h.advance();assert.equal(await h.engine.getBadge(name),null);
+  assert.deepEqual(await h.engine.getBadge(alias),{count:0,complete:true,updatedAt:newer.updatedAt});
+  h.advance();assert.equal(await h.engine.getBadge(alias),null);
 });
 test('research shares identity but never reads ancient sample projections',async()=>{
   const h=harness();h.data.set(matchKey(name),known);await h.engine.getCached(ancestor,'direct');

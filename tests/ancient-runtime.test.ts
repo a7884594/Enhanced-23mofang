@@ -48,3 +48,14 @@ test('sync opens the resolved target despite stale unrelated candidates, in both
     assert.equal((await ask('sync')).ok,true);assert.equal(opened[2].url,'https://www.theytree.com/tree/R-Y82825');
   }
 });
+
+test('background sync uses browser credentials and never opens a tab',async()=>{
+ const id='background-retry';let listener:any;const requests:any[]=[];
+ const store:Record<string,any>={'anc.owner.1':id,['anc.job.'+id]:{id,marker:'O-MF190013',target:'O-MF190013',nodeSnps:['MF190013'],snpChecks:[],mappingReady:false,scope:'direct',status:'sync',complete:false,createdAt:Date.now(),updatedAt:Date.now(),samples:[],unknown:[],branches:[],checked:[],queue:[],details:[],failures:[],excluded:0},['anc.syncTab.'+id]:99};
+ const chrome={runtime:{onMessage:{addListener:(l:any)=>listener=l}},storage:{local:{get:async(k:string)=>({[k]:structuredClone(store[k])}),set:async(v:any)=>Object.assign(store,structuredClone(v))}},tabs:{create:async()=>{throw Error('Must not open a tab');}}};
+ runInNewContext(worker,{chrome,URL,AbortController,AbortSignal,DOMException,setTimeout,clearTimeout,atob,btoa,crypto:{randomUUID:()=>id},fetch:async(url:string,opts:any)=>{requests.push({url,credentials:opts.credentials});return {status:403,url,text:async()=>''};}});
+ const ask=(type:string)=>new Promise<any>(resolve=>listener({type,id},{url:'https://www.23mofang.com/ancestry/ytree/O-MF190013',tab:{id:1}},resolve));
+ assert.equal((await ask('anc.backgroundSync')).ok,true);
+ for(let i=0;i<100&&store['anc.job.'+id].status==='running';i++)await new Promise(r=>setTimeout(r,5));
+ assert.equal(requests.length,1);assert.equal(requests[0].credentials,'include');assert.ok(requests[0].url.includes('haplogroup=O-FT130664'));assert.equal(store['anc.syncTab.'+id],null);assert.equal(store['anc.job.'+id].status,'sync');assert.equal(store['anc.job.'+id].complete,false);
+});

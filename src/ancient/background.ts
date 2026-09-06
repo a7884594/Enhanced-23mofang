@@ -42,6 +42,10 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
       if(message.type===profileText('anc.get'))return engine.get(id);
       if(message.type===profileText('anc.cancel'))return engine.pause(id);
       if(message.type===profileText('anc.resume'))return engine.resume(id);
+      if(message.type===profileText('anc.backgroundSync')){
+        await chrome.storage.local.set({[profileText(`anc.syncTab.${id}`)]:null});
+        return engine.backgroundSync(id);
+      }
       if(message.type===profileText('anc.sync')){
         const j=await engine.get(id);if(!j)throw Error('任务不存在');
         await engine.pause(id);const waiting=await engine.get(id);if(!waiting)throw Error('任务不存在');waiting.status='sync';waiting.complete=false;waiting.message='等待正常源站网页同步';await engine.save(waiting);

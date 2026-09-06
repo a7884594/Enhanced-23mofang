@@ -3,6 +3,7 @@ export interface VerifiedAlias {target:string;evidenceUrl:string;verified:true;g
 // Exact node names only. Confirmed in the normal logged-in TheYtree SNP dialogs.
 // In particular, 23mofang's A navigation points to A-P305: never map that to A.
 export const VERIFIED_ALIASES:Record<string,VerifiedAlias>=Object.fromEntries([
+  ['O-MF190013','O-FT130664','TYT278842/MF190013; Y86790'],
   ['B-M8720','B','M8720/V2144'],
   ['C-M130','C','RPS4Y711/PAGES00051/M130/RPS4Y/Page51'],
   ['F-M89','F','M89/PF2746'],

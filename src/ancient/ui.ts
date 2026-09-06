@@ -1,5 +1,6 @@
 import {profileText,RESEARCH} from './profile';
 import {badgePosition} from './badge-layout';
+import {resolveTarget} from './aliases';
 import {createSnpLookup} from './snp-lookup';
 import {formationAge,showAncientEntry,analysisAge} from './age';
 import {knownDirectCount,type BadgeCount} from './counts';
@@ -29,6 +30,7 @@ export function bootAncientUI(){
   const nodeLink=document.createElement('a');nodeLink.className='node-link';nodeLink.target='_blank';nodeLink.rel='noopener noreferrer';nodeLink.textContent='TheYtree 对应节点（待确认）';nodeLink.setAttribute('aria-disabled','true');
   nodeLink.style.cssText='display:inline-block;margin-top:8px;padding:4px 9px;border:1px solid #d8c9af;border-radius:6px;background:#fffdf9;font-size:12px;text-decoration:none;overflow-wrap:anywhere';
   nodeLink.onclick=e=>{if(!nodeLink.hasAttribute('href'))e.preventDefault();};q('.mapping').after(nodeLink);
+  const backgroundButton=document.createElement('button');backgroundButton.className='background-sync';backgroundButton.textContent='后台同步';backgroundButton.hidden=true;q('.actions').prepend(backgroundButton);
   const lookup=createSnpLookup(document,name=>readSnps(name,true),value=>api({type:profileText('anc.snpLookup'),snp:value}));q('.filters').after(lookup.element);
   const lookupStyle=document.createElement('style');lookupStyle.textContent='.snp-lookup{padding:0 18px;border-bottom:1px solid #eee6d8}.snp-result{max-height:210px;overflow:auto;overflow-wrap:anywhere;font-size:12px}.snp-result article{border:1px solid #e5dccd;border-radius:6px;padding:7px;margin:5px 0}.snp-options{display:flex;flex-wrap:wrap;gap:5px;max-height:140px;overflow:auto;margin:6px 0}.snp-options button[aria-pressed=true]{background:#795c34;color:white}.snp-lookup form{display:flex;gap:6px}.snp-lookup input:not([type=hidden]){min-width:0;flex:1;border:1px solid #ddd4c5;border-radius:6px;padding:5px 8px}.snp-lookup button{flex-shrink:0;border:1px solid #d8c9af;border-radius:6px;background:white;color:#725937;padding:5px 8px}.snp-lookup p{font-size:11px;color:#887761;margin:7px 0 10px}';shadow.append(lookupStyle);
   const responsive=document.createElement('style');responsive.textContent=RESPONSIVE;shadow.append(responsive);
@@ -38,7 +40,7 @@ export function bootAncientUI(){
   const set=(selector:string,value:string)=>{q(selector).textContent=value;};
   function updateNodeLink(j?:QueryResult){
     if(!j&&nodeLink.dataset.owner===selected)return;
-    const target=j&&j.status!=='unmatched'&&marker(j.target)&&(j.matchReused||j.nodeSnps?.length&&j.mappingReady||j.branches?.some(b=>b.marker===j.target&&!b.tentative))?j.target:null;
+    const target=j&&j.status!=='unmatched'&&marker(j.target)&&(j.matchReused||j.nodeSnps?.length&&j.mappingReady||j.mappingReady&&j.target!==j.marker&&resolveTarget(j.marker).target===j.target||j.branches?.some(b=>b.marker===j.target&&!b.tentative))?j.target:null;
     if(!target&&j?.status==='running'&&nodeLink.dataset.owner===selected&&nodeLink.dataset.target===j.target&&nodeLink.hasAttribute('href'))return;
     nodeLink.dataset.owner=selected;nodeLink.setAttribute('aria-disabled',String(!target));nodeLink.tabIndex=target?0:-1;nodeLink.style.opacity=target?'1':'.6';
     if(target){nodeLink.dataset.target=target;nodeLink.href=treeUrl(target);nodeLink.textContent=`TheYtree：${target} ↗`;nodeLink.title=`在新标签页打开对应节点 ${target}`;}
@@ -62,6 +64,7 @@ export function bootAncientUI(){
   function update(j:QueryResult){updateNodeLink(j);if(j.status==='unmatched'&&!j.nodeSnps){void query(!!j.forceRefresh,true);return;}job=j;set('.title',profileText(`${selected} · 古DNA`));set('.mapping',`来源：TheYtree · ${j.mapping}${j.matchReused?' · 已复用节点对应':''}`);
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
     q('.pause').hidden=!['running','sync'].includes(j.status);q('.resume').hidden=!['paused','partial','error'].includes(j.status);q('.sync').hidden=j.complete||j.status==='running';
+    backgroundButton.hidden=j.complete||j.status==='running';
     const regions=q<HTMLSelectElement>('select[aria-label="地区筛选"]');const previous=regions.value;regions.replaceChildren(new Option('全部地区',''),...[...new Set([...j.samples,...j.unknown].map(s=>s.country).filter(Boolean))].sort().map(r=>new Option(r,r)));regions.value=previous;
     set('.progress',`已确认 ${j.samples.length} 条 · 待核对 ${j.unknown.length} 条\n已检查 ${j.checked.length} 个节点 · 失败 ${j.failures.length} 项\n${j.message}${j.cachedChildren!=null?'\n已同步 '+j.cachedChildren+' 个下游节点的本节点缓存':''}`);
     set('.time',`${j.cached?'使用缓存 · ':''}更新于 ${new Date(j.updatedAt).toLocaleString()}`);
@@ -82,6 +85,7 @@ export function bootAncientUI(){
   async function query(refresh=false,useSnps=false){const token=++serial;busy=true;job=null;set('.title',profileText(`${selected} · 古DNA`));set('.progress','正在查询…');q('.records').replaceChildren();q('.pending').replaceChildren();q('.unknown').hidden=true;q('.failures').hidden=true;q('.empty').hidden=false;set('.empty',profileText('正在读取TheYtree公开古DNA信息…'));
     updateNodeLink();set('.time','');set('.mapping','来源：TheYtree');q('.snp-evidence > div').replaceChildren();q('.snp-evidence').hidden=true;
     q('.resume').hidden=true;q('.sync').hidden=true;q('.pause').hidden=true;
+    backgroundButton.hidden=true;
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
     try{const name=selected,range=scope;const values=useSnps?await readSnps(name):undefined;if(token!==serial)return;const j=await api({type:profileText('anc.start'),marker:name,scope:range,refresh,snps:values});if(token===serial)update(j);else void api({type:profileText('anc.cancel'),id:j.id}).catch(()=>{});}catch(e){if(token===serial){set('.empty',String(e));set('.progress',profileText('查询失败，不代表没有古样本'));}}finally{if(token===serial)busy=false;}
   }
@@ -92,7 +96,7 @@ export function bootAncientUI(){
   q<HTMLDetailsElement>('.snp-evidence').ontoggle=()=>{if(job&&q<HTMLDetailsElement>('.snp-evidence').open)update(job);};
   for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.onclick=()=>{scope=b.dataset.scope as Scope;void query();};
   q('.refresh').onclick=()=>void query(true);
-  for(const [selector,type]of [['.pause',profileText('anc.cancel')],['.resume',profileText('anc.resume')],['.sync',profileText('anc.sync')]])q(selector).onclick=async()=>{if(!job)return;const id=job.id,token=serial;try{const r=await api({type,id});if(token!==serial||job?.id!==id)return;if(r?.id)update(r);else set('.progress','已打开TheYtree，请在正常网页完成同步后回到这里');}catch(e){if(token===serial)set('.progress',String(e));}};
+  for(const [selector,type]of [['.background-sync',profileText('anc.backgroundSync')],['.pause',profileText('anc.cancel')],['.resume',profileText('anc.resume')],['.sync',profileText('anc.sync')]])q(selector).onclick=async()=>{if(!job)return;const id=job.id,token=serial;try{const r=await api({type,id});if(token!==serial||job?.id!==id)return;if(r?.id)update(r);else set('.progress','已打开TheYtree，请在正常网页完成同步后回到这里');}catch(e){if(token===serial)set('.progress',String(e));}};
   q('input').oninput=renderRows;for(const s of shadow.querySelectorAll('select'))s.onchange=renderRows;
   const svgNS='http://www.w3.org/2000/svg';let lastCountRequest='';let countGeneration=0;
   function invalidateCounts(){lastCountRequest='';countGeneration++;}

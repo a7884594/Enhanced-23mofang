@@ -25,7 +25,7 @@ export class RequestGate {
       this.next=Date.now()+500;
       const timeout=AbortSignal.timeout(25000);const control=new AbortController();
       const abort=()=>control.abort();signal.addEventListener('abort',abort,{once:true});timeout.addEventListener('abort',abort,{once:true});
-      const responseTask=(async()=>{try{const response=await fetch(url,{credentials:'omit',signal:control.signal,redirect:'follow',referrerPolicy:'no-referrer'});return {status:response.status,url:response.url,body:await response.text()};}
+      const responseTask=(async()=>{try{const response=await fetch(url,{credentials:'include',signal:control.signal,redirect:'follow',referrerPolicy:'no-referrer'});return {status:response.status,url:response.url,body:await response.text()};}
       finally{signal.removeEventListener('abort',abort);timeout.removeEventListener('abort',abort);}})();
       this.active.set(responseTask,search);void responseTask.finally(()=>this.active.delete(responseTask)).catch(()=>{});
       return {responseTask};
@@ -136,6 +136,17 @@ export class AncientEngine {
     await this.save(job);void this.run(job.id);return job;
   }
   async pause(id:string){this.active.get(id)?.abort();this.active.delete(id);const j=await this.io.get(jobKey(id));if(j&&j.status!=='complete'){j.status='paused';j.syncToken='';j.mappingToken='';j.message='查询已暂停，已取得的结果保留';await this.save(j);}return j;}
+  async backgroundSync(id:string){
+    const j:QueryResult=await this.pause(id);if(!j)throw Error('任务不存在');
+    const configured=resolveTarget(j.marker),saved=await loadMatch(this.io,j.marker);
+    const known=saved&&(configured.target===j.marker||saved.target===configured.target)?saved:null;
+    const target=known?.target||(configured.target!==j.marker?configured.target:null);
+    if(target){
+      if(j.target!==target||!j.mappingReady){j.branches=[];j.samples=[];j.unknown=[];j.checked=[];j.queue=[];j.details=[];j.excluded=0;j.complete=false;}
+      j.target=target;j.mapping=known?.mapping||configured.mapping;j.mappingReady=true;j.nodeSnps=known?.nodeSnps;j.snpChecks=known?.snpChecks||[];j.matchReused=!!known;j.mappingVerifiedAt=known?.verifiedAt;
+    }
+    j.forceRefresh=false;j.syncToken='';j.mappingToken='';await this.save(j);return this.resume(id);
+  }
   async resume(id:string){const j=await this.io.get(jobKey(id));if(!j)throw Error('任务不存在');if(this.active.has(id))return j;j.status='running';j.syncToken='';j.mappingToken='';j.failures=[];j.details=[...j.samples,...j.unknown].filter((s:AncientSample)=>!s.detail).map((s:AncientSample)=>s.au);j.queue=j.branches.filter((b:any)=>b.pending&&!j.checked.includes(b.id)).map((b:any)=>b.id);j.message='继续查询';await this.save(j);void this.run(id);return j;}
   private integrate(j:QueryResult,page:TreePage,requested?:string){
     const map=new Map(j.branches.map(b=>[b.id,b]));for(const b of page.branches)map.set(b.id,b);

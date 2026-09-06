@@ -63,25 +63,32 @@ function harness(){
 }
 async function wait(h:ReturnType<typeof harness>,id:string){for(let i=0;i<200;i++){const j=await h.engine.get(id);if(j?.status!=='running')return j!;await new Promise(r=>setTimeout(r,5));}throw Error('timeout');}
 async function resolve(h:ReturnType<typeof harness>,id:string){const j=await h.engine.beginSource(id);for(const f of [ft,by])await h.engine.sourceEquivalent(id,f.candidate.id,f.groups,'authenticated-page',j.mappingToken!);return (await h.engine.get(id))!;}
-test('end to end source sync resolves rename and confirms exactly the two direct ancient samples',async()=>{
+async function unresolved(h:ReturnType<typeof harness>){
+ const j={id:'unresolved',marker:fixture.marker,target:fixture.marker,nodeSnps:fixture.nodeSnps,snpChecks:checks(),mappingReady:false,scope:'direct' as const,status:'sync' as const,mapping:'',createdAt:Date.now(),updatedAt:Date.now(),cached:false,complete:false,samples:[],unknown:[],branches:[],checked:[],queue:[],details:[],failures:[],excluded:0,message:''};
+ await h.engine.save(j);return j;
+}
+test('built-in verified MF190013 rename downloads two samples without opening a source sync page',async()=>{
  const h=harness();let j=await wait(h,(await h.engine.start(fixture.marker,'direct',false,fixture.nodeSnps)).id);
- assert.equal(j.status,'sync');assert.equal(j.complete,false);assert.equal(j.samples.length,0);
- j=await resolve(h,j.id);assert.equal(j.mappingReady,true);assert.equal(j.target,'O-FT130664');
- j=await h.engine.adopt(j.id,fixture.searches[0].page);
- for(const s of j.samples)await h.engine.sourceDetail(j.id,s.au,parseDetail(readFileSync(`tests/fixtures/ancient/${s.au}.html`,'utf8'),s.url));
- j=await h.engine.finishSource(j.id);assert.equal(j.complete,true);assert.deepEqual(j.samples.map(s=>s.au),['AU82800','AU82840']);assert.ok(j.samples.every(s=>s.path.join()==='O-FT130664'));
+ assert.equal(j.mappingReady,true);assert.equal(j.target,'O-FT130664');
+ assert.equal(j.complete,true);assert.deepEqual(j.samples.map(s=>s.au),['AU82800','AU82840']);assert.ok(j.samples.every(s=>s.path.join()==='O-FT130664'));
  const cached=await h.engine.start(fixture.marker,'direct',false,fixture.nodeSnps);assert.equal(cached.cached,true);
- const fresh=await wait(h,(await h.engine.start(fixture.marker,'direct',true,fixture.nodeSnps)).id);assert.equal(fresh.mappingReady,false);assert.equal(fresh.status,'sync');
- assert.ok(h.urls.every(u=>!u.includes('getEquivalentMutationsDetail')));
+ const fresh=await wait(h,(await h.engine.start(fixture.marker,'direct',true,fixture.nodeSnps)).id);assert.equal(fresh.mappingReady,true);assert.equal(fresh.complete,true);
+ assert.ok(h.urls.every(u=>!u.includes('getEquivalentMutationsDetail')&&!u.includes('?snp=')));
 });
 test('verified source lists are reusable for another scope with locally recomputed overlap',async()=>{
- const h=harness();const j=await wait(h,(await h.engine.start(fixture.marker,'direct',false,fixture.nodeSnps)).id);await resolve(h,j.id);
+ const h=harness();const j=await unresolved(h);await resolve(h,j.id);
  const d=await wait(h,(await h.engine.start(fixture.marker,'downstream',false,fixture.nodeSnps)).id);assert.equal(d.target,'O-FT130664');assert.equal(d.complete,true);assert.equal(d.samples.length,2);
 });
 test('paused or superseded mapping tokens cannot import equivalent lists',async()=>{
- const h=harness();const j=await wait(h,(await h.engine.start(fixture.marker,'direct',false,fixture.nodeSnps)).id);
+ const h=harness();const j=await unresolved(h);
  const first=await h.engine.beginSource(j.id);const second=await h.engine.beginSource(j.id);
  await assert.rejects(h.engine.sourceEquivalent(j.id,ft.candidate.id,ft.groups,'visible-dialog',first.mappingToken!));
  await h.engine.pause(j.id);await assert.rejects(h.engine.sourceEquivalent(j.id,ft.candidate.id,ft.groups,'visible-dialog',second.mappingToken!));
  assert.equal((await h.engine.get(j.id))?.mappingReady,false);
+});
+
+test('background retry repairs an old MF190013 mapping checkpoint and keeps unknown mappings unresolved',async()=>{
+ const h=harness();const j=await unresolved(h);
+ await h.engine.backgroundSync(j.id);const result=await wait(h,j.id);
+ assert.equal(result.complete,true);assert.equal(result.target,'O-FT130664');assert.equal(result.samples.length,2);assert.equal(result.mappingToken,'');assert.ok(h.urls.every(u=>!u.includes('?snp=')));
 });
