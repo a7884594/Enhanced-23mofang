@@ -1,5 +1,6 @@
 import {SAMPLE_KIND,STYPE} from './profile';
 import {profileText} from './profile';
+import {fetchSnpResult} from './snp-result';
 import {AncientEngine,RequestGate,jobKey,cacheKey} from './engine';
 import {TY,marker,sourceMarker,treeUrl,sourceUrl,normalizeTree,fresh,summary,safeText,paperUrl,type TreePage,type AncientSample} from './model';
 const gate:RequestGate=((globalThis as any).__mofangSharedGate??=new RequestGate());
@@ -32,6 +33,7 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   (async()=>{
     const origin=sender.url?new URL(sender.url).origin:'';const tab=sender.tab?.id;
     if(origin==='https://www.23mofang.com'&&tab!=null){
+      if(message.type===profileText('anc.snpLookup'))return fetchSnpResult(message.snp);
       if(message.type===profileText('anc.start')){
         return startForTab(tab,message);
       }
