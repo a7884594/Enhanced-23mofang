@@ -1,10 +1,42 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {matchCounties,type Atlas,type County} from '../src/model';
+import {copyRegions,flatten,matchCounties,type Atlas,type County} from '../src/model';
 import {prepareAtlas} from '../src/geography';
 const atlas:Atlas=JSON.parse(readFileSync('assets/counties.geo.json','utf8'));
 const r=(code:string,name:string,province:string,city:string,percent:number|null=.123456):County=>({code,name,province,city,percent,path:[province,city,name]});
+
+test('O-F175 mixed city editions retain modern Tianyang, Linan and Haian values',()=>{
+  const fixture=JSON.parse(readFileSync('tests/fixtures/O-F175.json','utf8'));
+  const rows=flatten(copyRegions(fixture.geographicDistribution.chartItems));
+  const before=JSON.stringify(atlas);
+  const view=prepareAtlas(rows,atlas);
+  const result=matchCounties(rows,view);
+  assert.equal(rows.length,2699);assert.equal(result.matched.length,2683);assert.equal(result.unmatched.length,16);
+  assert.equal(new Set([...result.matched,...result.unmatched].map(x=>x.record)).size,rows.length);
+  for(const [code,target] of [['451003','451021'],['330112','330185'],['320685','320621']]){
+    const row=rows.find(r=>r.code===code)!;
+    const match=result.matched.find(m=>m.record===row)!;
+    assert.equal(match.feature.properties.code,target);assert.equal(match.record.percent,row.percent);
+    assert.ok(match.feature.properties.boundaryNote?.includes('行政区域不变'));
+    assert.equal(matchCounties([row],view).matched[0].feature.properties.code,target);
+    assert.equal(matchCounties([row],atlas).matched[0].feature.properties.code,code);
+    assert.equal(view.features.filter(f=>f.properties.code===target).length,1);
+  }
+  assert.equal(JSON.stringify(atlas),before);
+});
+
+test('historical modern aliases reject collisions and unrelated places',()=>{
+  const old=r('451021','田阳县','广西壮族自治区','百色市',.2);
+  const modern=r('451003','田阳区','广西壮族自治区','百色市',1);
+  const result=matchCounties([old,modern],atlas);
+  assert.equal(result.matched.length,0);assert.equal(result.unmatched.length,2);
+  const view=prepareAtlas([old],atlas);
+  for(const bad of [{...modern,city:'其他市'},{...modern,province:'其他省'},{...modern,name:'其他区'},{...modern,code:'451099'}])
+    assert.equal(matchCounties([bad],view).matched.length,0);
+  assert.equal(matchCounties([{...modern,percent:0}],view).matched[0].record.percent,0);
+  assert.equal(matchCounties([{...modern,percent:null}],view).matched.length,0);
+});
 test('provincial direct counties retain individual geometry and original frequency',()=>{
   const codes=['419001','429004','429005','429006','429021','469001','469002','469005','469006','469007','469021','469022','469023','469024','469025','469026','469027','469028','469029','469030','659001','659002','659004'];
   const records=codes.map(c=>{const p=atlas.features.find(f=>f.properties.code===c)!.properties;return r(c,p.name,p.path[0],'省直辖县级行政区划');});

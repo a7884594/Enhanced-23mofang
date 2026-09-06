@@ -9,7 +9,7 @@ export function prepareAtlas(records:County[],atlas:Atlas):Atlas {
   const selected=new Set<string>();
   for(const r of records){
     const id=key(r.code,r.name,r.province);if(current.has(id))continue;
-    const old=historical.get(id);
+    const old=historical.get(id)||supplementaryFeature(r,atlas.features);
     if(old&&r.city===old.properties.path[1])selected.add(old.properties.group!);
   }
   return {...atlas,features:atlas.features.filter(f=>{
@@ -23,6 +23,19 @@ export function prepareAtlas(records:County[],atlas:Atlas):Atlas {
 }
 
 export function supplementaryFeature(record:County,features:GeoFeature[]):GeoFeature|undefined {
+  // A city's historical edition can coexist with modern statistical names.
+  // These three changes retained the county boundary; never infer this from suffixes.
+  const equivalents=[
+    ['广西壮族自治区','百色市','451003','田阳区','451021','田阳县','451000'],
+    ['浙江省','杭州市','330112','临安区','330185','临安区','330100'],
+    ['江苏省','南通市','320685','海安市','320621','海安县','320600'],
+  ];
+  for(const [province,city,code,name,oldCode,oldName,group] of equivalents){
+    if(record.province!==province||record.city!==city||record.code!==code||record.name!==name)continue;
+    const old=features.find(f=>f.properties.group===group&&f.properties.code===oldCode&&f.properties.name===oldName&&f.properties.path[0]===province&&f.properties.path[1]===city);
+    if(old)return {...old,properties:{...old.properties,name,
+      boundaryNote:`${name}（${code}）对应原${oldName}（${oldCode}）边界；撤县市设区或设市时行政区域不变。${old.properties.boundaryNote||''}`}};
+  }
   // Two code systems. Only explicitly bundled Taiwan county/city names qualify.
   if(record.province==='台湾省'&&/^71\d{4}$/.test(record.code))
     return features.find(f=>f.properties.supplement==='taiwan'&&f.properties.name===record.name);
