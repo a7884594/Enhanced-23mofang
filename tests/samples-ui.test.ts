@@ -14,6 +14,10 @@ test('multi-source UI is click-only, isolates late results, and never renders fe
   for(const p of pending){const old=p.m.marker==='R-YP5527';p.resolve({ok:true,value:{provider:p.m.provider,marker:p.m.marker,target:p.m.marker,url:'https://www.yfull.com/tree/'+p.m.marker+'/',mapping:'同名',nodes:[{name:p.m.marker,parent:'',snps:[],pending:false,groups:[],samples:[{id:old?'OLD-RESULT':'NEW-RESULT',kind:'ancient',name:'<img src=x onerror=alert(1)>',region:'公开地区',period:'',culture:'',uncertain:false,evidence:'明确古人',url:'https://www.yfull.com/tree/R-CTS4385/'}]}],updatedAt:1,complete:true,status:'ready',message:''}});}
   await tick();const shadow=w.document.getElementById('mofang-samples-panel').shadowRoot;
   assert.ok(!shadow.textContent.includes('OLD-RESULT'));assert.ok(shadow.textContent.includes('NEW-RESULT'));assert.equal(shadow.querySelector('img'),null);
+  const count=calls.length;shadow.querySelector('[data-source-quick="theytree"]').click();assert.equal(shadow.querySelector('#samples-source-theytree .card'),null);assert.equal(shadow.querySelectorAll('.card').length,2);assert.match(shadow.querySelector('#samples-source-theytree').textContent,/当前筛选1条/);
+  shadow.querySelector('input').dispatchEvent(new w.Event('input'));assert.equal(shadow.querySelector('[data-source-quick="theytree"]').getAttribute('aria-expanded'),'false');assert.equal(shadow.querySelector('#samples-source-theytree .card'),null);
+  shadow.querySelector('[data-source-all]').click();assert.equal(shadow.querySelectorAll('.card').length,0);shadow.querySelector('[data-source-all]').click();assert.equal(shadow.querySelectorAll('.card').length,3);assert.equal(calls.length,count);
+  shadow.querySelector('[data-source-toggle="yfull"]').click();assert.equal(shadow.querySelector('[data-source-quick="yfull"]').getAttribute('aria-expanded'),'false');assert.equal(shadow.querySelector('#samples-source-yfull .card'),null);
   shadow.querySelector('.close').click();assert.equal(shadow.querySelector('.panel').hidden,true);assert.ok(calls.some(m=>m.type==='samples.cancel'));
  }finally{dom.window.close();}
 });

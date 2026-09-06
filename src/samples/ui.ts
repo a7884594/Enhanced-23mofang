@@ -12,6 +12,9 @@ export function bootSamples(){
   document.body.append(host);const q=<T extends HTMLElement=HTMLElement>(s:string)=>shadow.querySelector<T>(s)!;
   let current='',route='',serial=0,token='',results=new Map<Provider,Result>(),errors=new Map<Provider,string>(),loading=new Set<Provider>();
   const pages=new Map<Provider,number>();
+  const collapsed=new Set<Provider>();
+  const sourceToolbar=document.createElement('div');sourceToolbar.className='source-toolbar';sourceToolbar.setAttribute('aria-label','来源收起与展开');sourceToolbar.style.cssText='display:flex;gap:6px;flex-wrap:wrap;width:100%';q('.controls').append(sourceToolbar);
+  const layout=document.createElement('style');layout.textContent='header,.controls,footer{flex-shrink:0}.source-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}.source-heading button,.source-toolbar button{font-size:12px}.source-toolbar button[aria-expanded=false]{background:#eee9e1;color:#857966}';shadow.append(layout);
   const hints=new Map<Provider,Hint>(),hintLoading=new Set<Provider>();
   function el(tag:string,value:string,cls=''){const e=document.createElement(tag);e.textContent=value;if(cls)e.className=cls;return e;}
   function link(parent:Element,value:string,url:string){const a=el('a',value) as HTMLAnchorElement;a.href=url;a.target='_blank';a.rel='noopener noreferrer';parent.append(a);}
@@ -27,16 +30,20 @@ export function bootSamples(){
   function render(){
     const kind=q<HTMLSelectElement>('[aria-label="样本类别"]').value;const downstream=q<HTMLSelectElement>('[aria-label="范围"]').value==='downstream';const needle=q<HTMLInputElement>('input').value.trim().toLowerCase();
     q('.body').replaceChildren();
+    sourceToolbar.replaceChildren();
+    for(const p of providers){const b=el('button',`${collapsed.has(p)?'▸':'▾'} ${labels[p]}`) as HTMLButtonElement;b.dataset.sourceQuick=p;b.setAttribute('aria-expanded',String(!collapsed.has(p)));b.setAttribute('aria-controls',`samples-source-${p}`);b.title=`${collapsed.has(p)?'展开':'收起'} ${labels[p]}样本`;b.onclick=()=>{collapsed.has(p)?collapsed.delete(p):collapsed.add(p);render();sourceToolbar.querySelector<HTMLButtonElement>(`[data-source-quick="${p}"]`)?.focus({preventScroll:true});};sourceToolbar.append(b);}
+    const all=el('button',collapsed.size===providers.length?'全部展开':'全部收起') as HTMLButtonElement;all.dataset.sourceAll='';all.onclick=()=>{if(collapsed.size===providers.length)collapsed.clear();else for(const p of providers)collapsed.add(p);render();sourceToolbar.querySelector<HTMLButtonElement>('[data-source-all]')?.focus({preventScroll:true});};sourceToolbar.append(all);
     for(const provider of providers){
-      const section=document.createElement('section');section.append(el('h3',labels[provider]));q('.body').append(section);const result=results.get(provider);
+      const section=document.createElement('section');section.id=`samples-source-${provider}`;const heading=el('div','','source-heading');heading.append(el('h3',labels[provider]));const toggle=el('button',collapsed.has(provider)?'展开样本':'收起样本') as HTMLButtonElement;toggle.dataset.sourceToggle=provider;toggle.setAttribute('aria-expanded',String(!collapsed.has(provider)));toggle.setAttribute('aria-label',`${collapsed.has(provider)?'展开':'收起'} ${labels[provider]}样本`);toggle.onclick=()=>{const top=section.getBoundingClientRect().top;collapsed.has(provider)?collapsed.delete(provider):collapsed.add(provider);render();const next=q(`#samples-source-${provider}`);q('.body').scrollTop+=next.getBoundingClientRect().top-top;next.querySelector<HTMLButtonElement>('button')?.focus({preventScroll:true});};heading.append(toggle);section.append(heading);q('.body').append(section);const result=results.get(provider);
       if(loading.has(provider)){section.append(el('p','正在读取公开数据…','note'));continue;}
-      if(!result){section.append(el('p',errors.get(provider)||'尚未查询','error'));link(section,'打开来源页面',treeLink(provider,current));hintEntry(section,provider);continue;}
+      if(!result){section.append(el('p',errors.get(provider)||'尚未查询','error'));if(!collapsed.has(provider)){link(section,'打开来源页面',treeLink(provider,current));hintEntry(section,provider);}continue;}
       link(section,`${labels[provider]}：${result.target} ↗`,result.url);section.append(el('div',result.mapping,'note'));
-      if(result.status!=='ready'){section.append(el('p',result.message,'error'));hintEntry(section,provider);continue;}
+      if(result.status!=='ready'){section.append(el('p',result.message,'error'));if(!collapsed.has(provider))hintEntry(section,provider);continue;}
       const data=select(result,downstream),matches=(v:string)=>!needle||v.toLowerCase().includes(needle);
       const rows=data.rows.filter(s=>(kind==='all'||s.kind===kind||kind==='personal'&&s.kind==='modern')&&matches([s.id,s.name,s.region,s.node].join(' ')));
       const confirmed=rows.filter(s=>!s.uncertain&&s.kind!=='unknown'&&s.kind!=='modern').length;
       section.append(el('p',`${data.complete?'公开树范围已读取':'结果尚不完整'} · 当前筛选${rows.length}条（明确类型与挂载${confirmed}条）\n${result.cached?'使用缓存 · ':''}${new Date(result.updatedAt).toLocaleString()}`,'note'));
+      if(collapsed.has(provider)){const groups=data.groups.filter(g=>matches(g.region+' '+g.node));section.append(el('div',`已收起样本${provider==='ftdna'&&(kind==='all'||kind==='personal')?(result.modernAvailable===false?' · 现代汇总未公开':` · 现代地区汇总${groups.reduce((n,g)=>n+g.count,0)}条`):''}`,'note'));continue;}
       section.append(el('div',result.message,'note'));
       if(result.ancientAvailable===false)section.append(el('p','源站未公开此范围的古样本明细，不代表0条。','note'));
       if(!data.complete&&result.nodes.some(n=>n.pending&&!n.loadBlocked)){const more=el('button','继续加载下游') as HTMLButtonElement;more.disabled=!token;more.onclick=async()=>{q<HTMLSelectElement>('[aria-label="范围"]').value='downstream';const version=serial;loading.add(provider);render();try{const next=await api({type:'samples.query',token,provider,marker:current,more:true});if(version===serial)results.set(provider,next);}catch(e){if(version===serial){errors.set(provider,String(e));results.delete(provider);}}finally{if(version===serial){loading.delete(provider);render();}}};section.append(more);}
