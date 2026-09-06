@@ -1,4 +1,5 @@
 import {formationAge,showAncientEntry,analysisAge} from './age';
+import {knownDirectCount,type BadgeCount} from './counts';
 import {paintAncientBadge,paintAnalysisEntry} from './badge';
 import {snps} from './snps';
 import {A_CHANNEL,marker,treeMarker,treeUrl,TY,dated,sourceUrl,paperUrl,type Scope,type QueryResult,type AncientSample} from './model';
@@ -24,7 +25,7 @@ export function bootAncientUI(){
   const q=<T extends HTMLElement=HTMLElement>(s:string)=>shadow.querySelector<T>(s)!;
   const responsive=document.createElement('style');responsive.textContent=RESPONSIVE;shadow.append(responsive);
   const note=q('.caution');const noteText=note.textContent;const notes=document.createElement('details');notes.className='caution';const noteTitle=document.createElement('summary');noteTitle.textContent='口径说明';const noteBody=document.createElement('p');noteBody.textContent=noteText;notes.append(noteTitle,noteBody);note.replaceWith(notes);
-  let selected='';let scope:Scope='direct';let job:QueryResult|null=null;let serial=0;let busy=false;let lastState='';let priorFocus:Element|null=null;const counts=new Map<string,number>();
+  let selected='';let scope:Scope='direct';let job:QueryResult|null=null;let serial=0;let busy=false;let lastState='';let priorFocus:Element|null=null;const counts=new Map<string,BadgeCount>();
   const set=(selector:string,value:string)=>{q(selector).textContent=value;};
   function link(parent:Element,label:string,url:string){const a=document.createElement('a');a.textContent=label;a.href=url;a.target='_blank';a.rel='noopener noreferrer';parent.append(a);}
   function card(s:AncientSample,pending=false){const e=document.createElement('article');e.className='card';
@@ -56,7 +57,7 @@ export function bootAncientUI(){
     }
     const failures=q('.failures > div');failures.replaceChildren();for(const f of j.failures){const row=document.createElement('p');row.textContent=`${f.key}：${f.message}`;failures.append(row);}q('.failures').hidden=!j.failures.length;
     if(j.status==='unmatched'){const row=document.createElement('p');link(row,'到TheYtree搜索支系',`${TY}/`);failures.append(row);q('.failures').hidden=false;}
-    if(j.complete){invalidateCounts();if(j.scope==='direct')counts.set(j.marker,j.samples.length);updateBadges();}renderRows();
+    if(j.complete)invalidateCounts();const count=knownDirectCount(j);if(count)counts.set(j.marker,count);updateBadges();renderRows();
   }
   async function query(refresh=false,useSnps=false){const token=++serial;busy=true;job=null;set('.title',`${selected} · 古DNA`);set('.progress','正在查询…');q('.records').replaceChildren();q('.pending').replaceChildren();q('.unknown').hidden=true;q('.failures').hidden=true;q('.empty').hidden=false;set('.empty','正在读取TheYtree公开古DNA信息…');
     set('.time','');set('.mapping','来源：TheYtree');q('.snp-evidence > div').replaceChildren();q('.snp-evidence').hidden=true;
@@ -74,7 +75,7 @@ export function bootAncientUI(){
   const svgNS='http://www.w3.org/2000/svg';let lastCountRequest='';let countGeneration=0;
   function invalidateCounts(){lastCountRequest='';countGeneration++;}
   chrome.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes['anc.cacheRevision'])invalidateCounts();});
-  function updateBadges(){for(const e of document.querySelectorAll<SVGGElement>('[data-mofang-ancient]'))paintAncientBadge(e,counts.get(e.dataset.marker||''));const entry=document.querySelector<HTMLButtonElement>('#mofang-ancient-entry');if(entry)paintAnalysisEntry(entry,counts.get(entry.dataset.marker||''));}
+  function updateBadges(){for(const e of document.querySelectorAll<SVGGElement>('[data-mofang-ancient]'))paintAncientBadge(e,counts.get(e.dataset.marker||'')?.count,counts.get(e.dataset.marker||'')?.complete);const entry=document.querySelector<HTMLButtonElement>('#mofang-ancient-entry');if(entry)paintAnalysisEntry(entry,counts.get(entry.dataset.marker||'')?.count,counts.get(entry.dataset.marker||'')?.complete);}
   function scan(){
     const route=treeMarker(location.pathname);if(!route){document.querySelectorAll('[data-mofang-ancient],#mofang-ancient-entry').forEach(e=>e.remove());if(!q('.panel').hidden)close();return;}
     const eligible=formalNodes(document);const eligibleNodes=new Set(eligible.map(n=>n.node));
@@ -98,10 +99,10 @@ export function bootAncientUI(){
       const x=(right-matrix.e)/matrix.a+8;const transform=`translate(${x},3)`;if(button.getAttribute('transform')!==transform)button.setAttribute('transform',transform);
     }
     if(!nodes.length&&branchPage&&!youngBranch){
-      const heading=document.querySelector('h1');if(heading&&!document.getElementById('mofang-ancient-entry')){const b=document.createElement('button');b.id='mofang-ancient-entry';b.dataset.marker=route;paintAnalysisEntry(b,counts.get(route));b.onclick=()=>{const m=treeMarker(location.pathname);if(m)open(m);};heading.after(b);}
+      const heading=document.querySelector('h1');if(heading&&!document.getElementById('mofang-ancient-entry')){const b=document.createElement('button');b.id='mofang-ancient-entry';b.dataset.marker=route;paintAnalysisEntry(b,counts.get(route)?.count,counts.get(route)?.complete);b.onclick=()=>{const m=treeMarker(location.pathname);if(m)open(m);};heading.after(b);}
     }
     const entry=document.querySelector<HTMLButtonElement>('#mofang-ancient-entry');if(entry)entry.dataset.marker=route;
-    const names=[...new Set([...nodes.map(n=>n.name),...(entry?[route]:[])])].slice(0,600);const key=names.join('|');if(key&&key!==lastCountRequest){lastCountRequest=key;const generation=++countGeneration;void api({type:'anc.counts',markers:names}).then(result=>{if(generation!==countGeneration)return;for(const name of names)counts.delete(name);for(const [m,v]of Object.entries<any>(result))counts.set(m,v.count);updateBadges();}).catch(()=>{if(generation===countGeneration)lastCountRequest='';});}updateBadges();
+    const names=[...new Set([...nodes.map(n=>n.name),...(entry?[route]:[])])].slice(0,600);const key=names.join('|');if(key&&key!==lastCountRequest){lastCountRequest=key;const generation=++countGeneration;void api({type:'anc.counts',markers:names}).then(result=>{if(generation!==countGeneration)return;for(const name of names)counts.delete(name);for(const [m,v]of Object.entries<any>(result))counts.set(m,{count:v.count,complete:v.complete!==false,updatedAt:v.updatedAt||Date.now()});updateBadges();}).catch(()=>{if(generation===countGeneration)lastCountRequest='';});}updateBadges();
   }
   let priorRoute=location.pathname;
   setInterval(()=>{

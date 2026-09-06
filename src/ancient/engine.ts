@@ -3,6 +3,7 @@ import {parseDetail} from './parser';
 import {snps,checkSnp,snpUrl,mappingTarget} from './snps';
 import {equivalentEvidence,applyEquivalent,disambiguate,type EquivalentEvidence} from './equivalent';
 import {directProjections,subtreeProjection} from './projection';
+import {knownDirectCount,type BadgeCount} from './counts';
 import {resolveTarget} from './aliases';
 export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Promise<void>;request(url:string,signal:AbortSignal):Promise<{status:number;url:string;body:string}>;now():number;id():string}
 export class SyncRequired extends Error{}
@@ -48,9 +49,25 @@ export class AncientEngine {
       await this.io.set('anc.cacheRevision',{at:j.updatedAt,id:j.id});
     });this.cacheTail=work;await work;
   }
+  private async readCompatibleCache(name:string,scope:'direct'|'downstream'):Promise<QueryResult|null>{
+    const current=await this.io.get(cacheKey(name,scope));if(current)return current;
+    // v1.1.2 already required verified cross-site mapping. Keep its original
+    // collection time; do not revive expired or unresolved earlier results.
+    const old=await this.io.get(`anc.cache.snp3.${name}.${scope}`);
+    if(!old||old.marker!==name||old.scope!==scope||!fresh(old,this.io.now())||!Array.isArray(old.samples)||!Array.isArray(old.branches)||
+      (old.target!==name&&(!old.mappingReady||!old.nodeSnps?.length||!old.snpChecks?.length)))return null;
+    await this.putCache(old);return old;
+  }
   async getCached(name:string,scope:'direct'|'downstream'):Promise<QueryResult|null>{
-    const now=this.io.now();let current:QueryResult|null=await this.io.get(cacheKey(name,scope))||null;
-    const direct:QueryResult|null=scope==='direct'?current:await this.io.get(cacheKey(name,'direct'))||null;
+    const now=this.io.now();let current:QueryResult|null=await this.readCompatibleCache(name,scope);
+    if(scope==='direct'){
+      const whole=await this.readCompatibleCache(name,'downstream');
+      if(whole&&fresh(whole,now)&&(!current||whole.updatedAt>current.updatedAt||whole.projectedVersion!==1)){
+        await this.cacheResult({...whole,projectedVersion:undefined});
+        current=await this.readCompatibleCache(name,scope);
+      }
+    }
+    const direct:QueryResult|null=scope==='direct'?current:await this.readCompatibleCache(name,'direct');
     const alias=direct&&direct.target!==name?direct:null;
     const mappingValid=!alias||now-(alias.mappingVerifiedAt??alias.updatedAt)<TTL;
     if(!mappingValid)return null;
@@ -67,6 +84,16 @@ export class AncientEngine {
       await this.putCache(current);
     }
     return current&&fresh(current,now)?current:null;
+  }
+  async getBadge(name:string):Promise<BadgeCount|null>{
+    const cached=await this.getCached(name,'direct');let result=cached?knownDirectCount(cached,this.io.now()):null;
+    for(const scope of ['direct','downstream']){
+      const id=await this.io.get(`anc.pending.fast4.${name}.${scope}`);const job=id?await this.io.get(jobKey(id)):null;
+      if(!job||job.marker!==name||job.complete)continue;
+      const partial=knownDirectCount(job,this.io.now());
+      if(partial&&(!result||job.createdAt>result.updatedAt))result=partial;
+    }
+    return result;
   }
   async start(name:string,scope:'direct'|'downstream',refresh=false,values?:unknown):Promise<QueryResult>{
     const m=marker(name);if(!m)throw Error('无效支系标记');const nodeSnps=values===undefined?undefined:snps(values);if(nodeSnps&&!nodeSnps.length)throw Error('尚未读取到节点SNP列表，请等待树加载后重试');

@@ -6,6 +6,8 @@ import {parseDetail,parseTreeDOM} from '../src/ancient/parser.ts';
 import {resolveTarget} from '../src/ancient/aliases.ts';
 import {AncientEngine,RequestGate,jobKey,cacheKey,type IO} from '../src/ancient/engine.ts';
 import {directProjections} from '../src/ancient/projection';
+import {knownDirectCount} from '../src/ancient/counts';
+import {paintAncientBadge} from '../src/ancient/badge';
 import {formalNodes} from '../src/ancient/ui.ts';
 import {parseHTML} from 'linkedom';
 const page:TreePage=JSON.parse(readFileSync('tests/fixtures/ancient/O-F8.json','utf8'));
@@ -61,6 +63,31 @@ test('direct query finishes, caches, and does not fetch descendant sample detail
 });
 test('descendant query preserves the actual placement and does not double count',async()=>{
   const h=harness();const start=await h.engine.start('O-F8','downstream');const j=await settle(h,start.id);assert.equal(j.samples.length,2);assert.equal(j.samples.find(s=>s.au==='AU104785')!.path.at(-1),'O-YP4864');assert.equal(j.complete,true);
+});
+test('paused O-F8 checkpoint with 42 known samples supplies its badge before reopening the panel',async()=>{
+  const h=harness('blocked');const j=await settle(h,(await h.engine.start('O-F8','direct')).id);
+  j.status='paused';j.branches=page.branches;j.samples=selectSamples(page,root,'direct').samples;await h.engine.save(j);
+  const requests=h.requests.length;const badge=await new AncientEngine(h.io).getBadge('O-F8');assert.equal(badge?.count,42);assert.equal(badge?.complete,false);assert.equal(h.requests.length,requests);
+});
+test('failed empty query remains unknown and downstream totals are not direct badge counts',async()=>{
+  const h=harness('blocked');const empty=await settle(h,(await h.engine.start('O-F8','direct')).id);assert.equal(knownDirectCount(empty),null);
+  const partial={...empty,scope:'downstream' as const,branches:page.branches,samples:selectSamples(page,root,'downstream').samples};assert.equal(knownDirectCount(partial)?.count,42);
+});
+test('partial badge shows a plus, transitions to exact count and survives a text redraw',()=>{
+  const doc=parseHTML('<svg><g data-marker="O-F8"><title></title><rect></rect><text></text></g></svg>').document;
+  const button=doc.querySelector('g')! as unknown as SVGGElement;paintAncientBadge(button,42,false);assert.equal(button.querySelector('text')?.textContent,'古DNA · 42+');assert.match(button.querySelector('title')!.textContent!,/尚未完整/);
+  paintAncientBadge(button,42,true);assert.equal(button.querySelector('text')?.textContent,'古DNA · 42');button.querySelector('text')!.textContent='古';paintAncientBadge(button,42,true);assert.equal(button.querySelector('text')?.textContent,'古DNA · 42');
+  paintAncientBadge(button,0,true);assert.equal(button.querySelector('text')?.textContent,'古DNA · 0');
+});
+test('badge lookup repairs an older complete downstream-only cache without clicking that query',async()=>{
+  const h=harness();const j=await settle(h,(await h.engine.start('O-F8','downstream')).id);
+  h.store.delete(cacheKey('O-F8','direct'));h.store.delete(cacheKey('O-YP4864','direct'));h.store.set(cacheKey('O-F8','downstream'),{...j,projectedVersion:undefined});const n=h.requests.length;
+  assert.equal((await h.engine.getBadge('O-F8'))?.count,1);assert.equal((await h.engine.getBadge('O-YP4864'))?.count,1);assert.equal(h.requests.length,n);
+});
+test('still-valid v1.1.2 complete cache migrates without extending its timestamp',async()=>{
+  const h=harness();const j=await settle(h,(await h.engine.start('O-F8','direct')).id);h.store.delete(cacheKey('O-F8','direct'));h.store.set('anc.cache.snp3.O-F8.direct',j);
+  const found=await h.engine.getBadge('O-F8');assert.equal(found?.count,1);assert.equal(found?.updatedAt,j.updatedAt);
+  h.store.delete(cacheKey('O-F8','direct'));h.store.set('anc.cache.snp3.O-F8.direct',{...j,updatedAt:Date.now()-TTL-1});assert.equal(await h.engine.getCached('O-F8','direct'),null);
 });
 test('completed ancestor query populates direct child caches and reuses subtree data without requests',async()=>{
   const h=harness();const parent=await settle(h,(await h.engine.start('O-F8','downstream')).id);
