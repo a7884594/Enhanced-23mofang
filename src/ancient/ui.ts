@@ -1,3 +1,4 @@
+import {requestMofangSnp} from './mofang-snp-result';
 import {profileText,RESEARCH} from './profile';
 import {badgePosition} from './badge-layout';
 import {resolveTarget} from './aliases';
@@ -33,7 +34,7 @@ export function bootAncientUI(){
   nodeLink.style.cssText='display:inline-block;margin-top:8px;padding:4px 9px;border:1px solid #d8c9af;border-radius:6px;background:#fffdf9;font-size:12px;text-decoration:none;overflow-wrap:anywhere';
   nodeLink.onclick=e=>{if(!nodeLink.hasAttribute('href'))e.preventDefault();};q('.mapping').after(nodeLink);
   const backgroundButton=document.createElement('button');backgroundButton.className='background-sync';backgroundButton.textContent='后台同步';backgroundButton.hidden=true;q('.actions').prepend(backgroundButton);
-  const lookup=createSnpLookup(document,name=>readSnps(name,true),value=>api({type:profileText('anc.snpLookup'),snp:value}));q('.filters').after(lookup.element);
+  const lookup=createSnpLookup(document,name=>readSnps(name,true),(value,provider)=>provider==='mofang'?requestMofangSnp(value):api({type:profileText('anc.snpLookup'),snp:value}));q('.filters').after(lookup.element);
   const lookupStyle=document.createElement('style');lookupStyle.textContent='.snp-lookup{padding:0 18px;border-bottom:1px solid #eee6d8}.snp-result{max-height:210px;overflow:auto;overflow-wrap:anywhere;font-size:12px}.snp-result article{border:1px solid #e5dccd;border-radius:6px;padding:7px;margin:5px 0}.snp-options{display:flex;flex-wrap:wrap;gap:5px;max-height:140px;overflow:auto;margin:6px 0}.snp-options button[aria-pressed=true]{background:#795c34;color:white}.snp-lookup form{display:flex;gap:6px}.snp-lookup input:not([type=hidden]){min-width:0;flex:1;border:1px solid #ddd4c5;border-radius:6px;padding:5px 8px}.snp-lookup button{flex-shrink:0;border:1px solid #d8c9af;border-radius:6px;background:white;color:#725937;padding:5px 8px}.snp-lookup p{font-size:11px;color:#887761;margin:7px 0 10px}';shadow.append(lookupStyle);
   const responsive=document.createElement('style');responsive.textContent=RESPONSIVE;shadow.append(responsive);
   const note=q('.caution');const noteText=RESEARCH?'只收录TheYtree明确标记为科研的样本，个人与古人样本排除。挂载和下游范围以TheYtree为准。':note.textContent;const notes=document.createElement('details');notes.className='caution';const noteTitle=document.createElement('summary');noteTitle.textContent='口径说明';const noteBody=document.createElement('p');noteBody.textContent=noteText;notes.append(noteTitle,noteBody);note.replaceWith(notes);
