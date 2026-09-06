@@ -44,7 +44,7 @@ export function bootAncientUI(){
     q('.records').replaceChildren(...rows.map(s=>card(s)));const pending=job.unknown.filter(filter);q('.pending').replaceChildren(...pending.map(s=>card(s,true)));q('.unknown').hidden=!pending.length;set('.unknown summary',`待核对 ${pending.length} 条（不计入已确认数量）`);
     q('.empty').hidden=!!rows.length||!!pending.length;q('.empty').textContent=job.complete?profileText('当前条件下没有古样本'):job.message;
   }
-  function update(j:QueryResult){if(j.status==='unmatched'&&!j.nodeSnps){void query(!!j.forceRefresh,true);return;}job=j;set('.title',profileText(`${selected} · 古DNA`));set('.mapping',`来源：TheYtree · ${j.mapping}`);
+  function update(j:QueryResult){if(j.status==='unmatched'&&!j.nodeSnps){void query(!!j.forceRefresh,true);return;}job=j;set('.title',profileText(`${selected} · 古DNA`));set('.mapping',`来源：TheYtree · ${j.mapping}${j.matchReused?' · 已复用节点对应':''}`);
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
     q('.pause').hidden=!['running','sync'].includes(j.status);q('.resume').hidden=!['paused','partial','error'].includes(j.status);q('.sync').hidden=j.complete||j.status==='running';
     const regions=q<HTMLSelectElement>('select[aria-label="地区筛选"]');const previous=regions.value;regions.replaceChildren(new Option('全部地区',''),...[...new Set([...j.samples,...j.unknown].map(s=>s.country).filter(Boolean))].sort().map(r=>new Option(r,r)));regions.value=previous;

@@ -6,6 +6,7 @@ import {snps,checkSnp,snpUrl,mappingTarget,needsSnpQuery} from './snps';
 import {equivalentEvidence,applyEquivalent,disambiguate,type EquivalentEvidence} from './equivalent';
 import {directProjections,subtreeProjection} from './projection';
 import {knownDirectCount,type BadgeCount} from './counts';
+import {loadMatch,confirmedMatch,matchKey} from './node-match';
 import {resolveTarget} from './aliases';
 export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Promise<void>;request(url:string,signal:AbortSignal):Promise<{status:number;url:string;body:string}>;now():number;id():string}
 export class SyncRequired extends Error{}
@@ -29,7 +30,9 @@ export class RequestGate {
 export class AncientEngine {
   private active=new Map<string,AbortController>();
   constructor(private io:IO){}
-  async save(job:QueryResult,touch=true){if(touch)job.updatedAt=this.io.now();await this.io.set(jobKey(job.id),job);if(!job.complete&&job.status!=='unmatched')await this.io.set(profileText(`anc.pending.fast4.${job.marker}.${job.scope}`),job.id);}
+  private remembered=new Map<string,string>();
+  private async rememberMatch(j:QueryResult){const value=confirmedMatch(j);if(!value||j.matchReused)return;const fingerprint=JSON.stringify([value.target,value.nodeSnps,value.snpChecks]);if(this.remembered.get(j.id)===fingerprint)return;await this.io.set(matchKey(j.marker),value);j.mappingVerifiedAt=value.verifiedAt;this.remembered.set(j.id,fingerprint);}
+  async save(job:QueryResult,touch=true){if(touch)job.updatedAt=this.io.now();await this.rememberMatch(job);await this.io.set(jobKey(job.id),job);if(!job.complete&&job.status!=='unmatched')await this.io.set(profileText(`anc.pending.fast4.${job.marker}.${job.scope}`),job.id);}
   async get(id:string):Promise<QueryResult|null>{const j=await this.io.get(jobKey(id));if(j?.status==='running'&&!this.active.has(id)){j.status='paused';j.message='后台任务已暂停，可继续查询';await this.save(j);}return j||null;}
   private cacheTail:Promise<unknown>=Promise.resolve();
   private async putCache(j:QueryResult){
@@ -71,7 +74,7 @@ export class AncientEngine {
     }
     const direct:QueryResult|null=scope==='direct'?current:await this.readCompatibleCache(name,'direct');
     const alias=direct&&direct.target!==name?direct:null;
-    const mappingValid=!alias||now-(alias.mappingVerifiedAt??alias.updatedAt)<TTL;
+    const mappingValid=!alias||alias.matchReused||now-(alias.mappingVerifiedAt??alias.updatedAt)<TTL;
     if(!mappingValid)return null;
     const target=alias?.target||name;
     const canonical:QueryResult|null=alias?await this.io.get(cacheKey(target,'direct'))||null:direct;
@@ -98,18 +101,20 @@ export class AncientEngine {
     return result;
   }
   async start(name:string,scope:'direct'|'downstream',refresh=false,values?:unknown):Promise<QueryResult>{
-    const m=marker(name);if(!m)throw Error('无效支系标记');const nodeSnps=values===undefined?undefined:snps(values);if(nodeSnps&&!nodeSnps.length)throw Error('尚未读取到节点SNP列表，请等待树加载后重试');
-    if(!refresh){const cached=await this.getCached(m,scope);if(cached&&fresh(cached,this.io.now())&&(values===undefined||JSON.stringify(cached.nodeSnps)===JSON.stringify(nodeSnps))){if(cached.scope==='downstream'&&cached.projectedVersion!==1)await this.cacheResult(cached);const copy={...cached,id:this.io.id(),cached:true};await this.io.set(jobKey(copy.id),copy);return copy;}}
-    const resolved=resolveTarget(m);
+    const m=marker(name);if(!m)throw Error('无效支系标记');let nodeSnps=values===undefined?undefined:snps(values);if(nodeSnps&&!nodeSnps.length)throw Error('尚未读取到节点SNP列表，请等待树加载后重试');
+    const stored=!refresh?await loadMatch(this.io,m):null;const known=stored&&(values===undefined||JSON.stringify(stored.nodeSnps)===JSON.stringify(nodeSnps))?stored:null;
+    if(known)nodeSnps=known.nodeSnps;
+    if(!refresh){const cached=await this.getCached(m,scope);if(cached&&fresh(cached,this.io.now())&&(!known||cached.target===known.target)&&(values===undefined||JSON.stringify(cached.nodeSnps)===JSON.stringify(nodeSnps))){if(cached.scope==='downstream'&&cached.projectedVersion!==1)await this.cacheResult(cached);const copy={...cached,...(known?{matchReused:true,mappingVerifiedAt:known.verifiedAt,nodeSnps:known.nodeSnps,snpChecks:known.snpChecks,mapping:known.mapping}:{}),id:this.io.id(),cached:true};await this.io.set(jobKey(copy.id),copy);return copy;}}
+    const resolved=known?{target:known.target,mapping:known.mapping}:resolveTarget(m);
     if(!refresh){
       const pendingId=await this.io.get(profileText(`anc.pending.fast4.${m}.${scope}`));const pending=pendingId?await this.io.get(jobKey(pendingId)):null;
-      if(pending&&!pending.complete&&pending.status!=='unmatched'&&(values===undefined||JSON.stringify(pending.nodeSnps)===JSON.stringify(nodeSnps))&&this.io.now()-pending.createdAt<TTL&&!this.active.has(pending.id)){
+      if(pending&&(!known||pending.mappingReady&&pending.target===known.target)&&!pending.complete&&pending.status!=='unmatched'&&(values===undefined||JSON.stringify(pending.nodeSnps)===JSON.stringify(nodeSnps))&&this.io.now()-pending.createdAt<TTL&&!this.active.has(pending.id)){
         // Give the reopened page its own task ID; a tab restored after browser
         // restart must not need the previous tab ID to find its checkpoint.
-        const recovered:QueryResult={...pending,id:this.io.id(),status:'paused',syncToken:'',cached:false,message:'找到未完成的查询，点击“继续查询”恢复，或打开TheYtree同步'};await this.save(recovered);return recovered;
+        const recovered:QueryResult={...pending,...(known?{matchReused:true,mappingVerifiedAt:known.verifiedAt}:{}),id:this.io.id(),status:'paused',syncToken:'',cached:false,message:'找到未完成的查询，点击“继续查询”恢复，或打开TheYtree同步'};await this.save(recovered);return recovered;
       }
     }
-    const job:QueryResult={id:this.io.id(),marker:m,...resolved,nodeSnps,snpChecks:[],mappingReady:!nodeSnps,scope,status:'running',createdAt:this.io.now(),updatedAt:this.io.now(),cached:false,forceRefresh:refresh,complete:false,samples:[],unknown:[],branches:[],checked:[],queue:[],details:[],failures:[],excluded:0,message:'正在读取TheYtree公开树'};
+    const job:QueryResult={id:this.io.id(),marker:m,...resolved,nodeSnps,snpChecks:known?.snpChecks||[],mappingReady:!!known||!nodeSnps,matchReused:!!known,mappingVerifiedAt:known?.verifiedAt,scope,status:'running',createdAt:this.io.now(),updatedAt:this.io.now(),cached:false,forceRefresh:refresh,complete:false,samples:[],unknown:[],branches:[],checked:[],queue:[],details:[],failures:[],excluded:0,message:'正在读取TheYtree公开树'};
     await this.save(job);void this.run(job.id);return job;
   }
   async pause(id:string){this.active.get(id)?.abort();this.active.delete(id);const j=await this.io.get(jobKey(id));if(j&&j.status!=='complete'){j.status='paused';j.syncToken='';j.mappingToken='';j.message='查询已暂停，已取得的结果保留';await this.save(j);}return j;}
