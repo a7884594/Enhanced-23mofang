@@ -1,0 +1,11 @@
+import {writeFile} from 'node:fs/promises';
+import {htmlSnps} from '../src/ancient/nuxt-snps';
+import {normalizeTree,selectSamples} from '../src/ancient/model';
+let text='';for await(const c of process.stdin)text+=c;
+const input=JSON.parse(text.replace(/^\uFEFF/,''));const name='O-MF190013';
+const nodeSnps=htmlSnps(input.html,name);if(!nodeSnps.includes('MF190013'))throw Error('Missing source node');
+const searches=input.searches.map((r:any)=>({snp:r.snp,page:normalizeTree(r.raw)}));
+const output={capturedAt:new Date().toISOString(),marker:name,nodeSnps,source:`https://www.23mofang.com/ancestry/ytree/${name}`,searches};
+await writeFile('tests/fixtures/ancient/MF190013-searches.json',JSON.stringify(output,null,2));
+const page=searches.find((r:any)=>r.snp==='MF190013').page;const root=page.branches.find((b:any)=>b.marker==='O-FT130664');
+console.log(JSON.stringify({nodeSnps,root,direct:selectSamples(page,root,'direct').samples.map(s=>({au:s.au,url:s.url,marker:s.marker})),searches:searches.map((s:any)=>({snp:s.snp,root:s.page.branches[0]?.marker}))}));

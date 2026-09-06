@@ -46,8 +46,11 @@ export function bootAncientUI(){
     set('.progress',`已确认 ${j.samples.length} 条 · 待核对 ${j.unknown.length} 条\n已检查 ${j.checked.length} 个节点 · 失败 ${j.failures.length} 项\n${j.message}`);
     set('.time',`${j.cached?'使用缓存 · ':''}更新于 ${new Date(j.updatedAt).toLocaleString()}`);
     const evidence=q('.snp-evidence > div');evidence.replaceChildren();
-    const info=document.createElement('p');info.textContent=`本节点SNP ${j.nodeSnps?.length??0} 个，已核对 ${j.snpChecks?.length??0} 个`;evidence.append(info);
-    for(const c of j.snpChecks||[]){const row=document.createElement('p');row.textContent=`${c.snp} → ${c.target||'未确认对应'}${c.issue?' · '+c.issue:''} `;link(row,'查询依据',`${TY}/tree/${encodeURIComponent(c.target||j.marker)}?snp=${encodeURIComponent(c.snp)}`);evidence.append(row);}
+    const info=document.createElement('p');info.textContent=`23魔方本节点SNP：${j.nodeSnps?.join(', ')||'尚未读取'}（已核对 ${j.snpChecks?.length??0} / ${j.nodeSnps?.length??0}）`;evidence.append(info);
+    for(const c of j.snpChecks||[]){const row=document.createElement('p');row.textContent=`${c.snp} → ${c.target||c.candidate?.marker&&('候选 '+c.candidate.marker)||'未确认对应'}${c.issue?' · '+c.issue:''} `;link(row,'查询依据',`${TY}/tree/${encodeURIComponent(c.target||j.marker)}?snp=${encodeURIComponent(c.snp)}`);evidence.append(row);
+      if(c.evidence){const detail=document.createElement('p');detail.textContent=`TheYtree等价SNP：${c.evidence.groups.join(', ')}；共同SNP：${c.evidence.overlap.join(', ')||'无'}；读取时间：${new Date(c.evidence.capturedAt).toLocaleString()}`;evidence.append(detail);}
+      if(c.note){const note=document.createElement('p');note.className='issue';note.textContent=c.note;evidence.append(note);}
+    }
     const failures=q('.failures > div');failures.replaceChildren();for(const f of j.failures){const row=document.createElement('p');row.textContent=`${f.key}：${f.message}`;failures.append(row);}q('.failures').hidden=!j.failures.length;
     if(j.status==='unmatched'){const row=document.createElement('p');link(row,'到TheYtree搜索支系',`${TY}/`);failures.append(row);q('.failures').hidden=false;}
     if(j.complete&&j.scope==='direct'){counts.set(j.marker,j.samples.length);updateBadges();}renderRows();

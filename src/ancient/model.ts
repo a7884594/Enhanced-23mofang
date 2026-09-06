@@ -2,10 +2,10 @@ export const A_CHANNEL='mofang-ancient/v1';
 export const TY='https://www.theytree.com';
 export const TTL=7*24*60*60*1000;
 export type Scope='direct'|'downstream';
-export interface Branch {id:string;parent:string;marker:string;pending:boolean;tentative:boolean}
+export interface Branch {equivalentCount?:number;id:string;parent:string;marker:string;pending:boolean;tentative:boolean}
 export interface AncientSample {au:string;name:string;marker:string;parentId:string;path:string[];tentative:boolean;type:'ancient'|'unknown';typeEvidence:string;url:string;country:string;place:string;culture:string;period:string;coverage:number|null;depth:number|null;paper:string;paperUrl:string;detail:boolean;issue:string}
 export interface TreePage {branches:Branch[];samples:AncientSample[];unclassified:AncientSample[];excluded:number;valid:boolean;reason:string}
-export interface QueryResult {nodeSnps?:string[];snpChecks?:import("./snps").SnpCheck[];mappingReady?:boolean;id:string;marker:string;target:string;scope:Scope;status:'running'|'complete'|'partial'|'paused'|'sync'|'unmatched'|'error';mapping:string;createdAt:number;updatedAt:number;cached:boolean;forceRefresh?:boolean;syncToken?:string;complete:boolean;samples:AncientSample[];unknown:AncientSample[];branches:Branch[];checked:string[];queue:string[];details:string[];failures:{key:string;message:string}[];excluded:number;message:string}
+export interface QueryResult {mappingToken?:string;nodeSnps?:string[];snpChecks?:import("./snps").SnpCheck[];mappingReady?:boolean;id:string;marker:string;target:string;scope:Scope;status:'running'|'complete'|'partial'|'paused'|'sync'|'unmatched'|'error';mapping:string;createdAt:number;updatedAt:number;cached:boolean;forceRefresh?:boolean;syncToken?:string;complete:boolean;samples:AncientSample[];unknown:AncientSample[];branches:Branch[];checked:string[];queue:string[];details:string[];failures:{key:string;message:string}[];excluded:number;message:string}
 export const safeText=(v:unknown,max=1200)=>typeof v==='string'?v.trim().slice(0,max):'';
 export function marker(v:unknown):string|null {const s=safeText(v,100).toUpperCase();return /^(?:ROOT|[A-Z][A-Z0-9]*(?:-[A-Z0-9][A-Z0-9._-]*)?)$/.test(s)?s:null;}
 export function treeMarker(path:string):string|null {const m=/^\/ancestry\/ytree\/([^/]+)\/?(?:branch\/?)?$/.exec(path);try{return m?marker(decodeURIComponent(m[1])):null;}catch{return null;}}
@@ -28,7 +28,7 @@ export function normalizeTree(raw:any):TreePage {
       const name=safeText(r.name,100),tentative=name.endsWith('?')||id.endsWith('LOW');
       if(!marker(name.replace(/\?$/,'')))continue;
       const children=counts.get(id)||0;
-      branches.push({id,parent:String(r.parent??''),marker:name.toUpperCase(),tentative,pending:!!r.isParent&&(!children||Number(r.low_count||0)>children)});
+      branches.push({equivalentCount:Number.isInteger(r.equivalent_mutations?.equivalent_count)&&r.equivalent_mutations.equivalent_count>=0?r.equivalent_mutations.equivalent_count:undefined,id,parent:String(r.parent??''),marker:name.toUpperCase(),tentative,pending:!!r.isParent&&(!children||Number(r.low_count||0)>children)});
       continue;
     }
     // stype=2 is the source's explicit Ancient category (verified against its

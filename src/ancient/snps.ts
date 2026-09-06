@@ -6,7 +6,7 @@ export function snp(v:unknown):string|null {
 }
 export function snps(v:unknown):string[]{return Array.isArray(v)?[...new Set(v.map(snp).filter((s):s is string=>!!s))].sort():[];}
 export const snpUrl=(s:string)=>`${TY}/api/ysnp/theytree/?snp=${encodeURIComponent(s)}`;
-export interface SnpCheck {snp:string;target:string;issue:string;url:string}
+export interface SnpCheck {snp:string;target:string;issue:string;url:string;note?:string;candidate?:import('./equivalent').EquivalentCandidate;evidence?:import('./equivalent').EquivalentEvidence}
 // Search may return the default world tree for unknown SNPs. Never accept its
 // first row or an ancestor as an alias. Require a unique subtree root whose
 // primary SNP is explicitly present in the clicked node's LOCAL rsids list.
@@ -16,7 +16,7 @@ export function checkSnp(page:TreePage,value:string,local:string[]):SnpCheck {
   const root=roots.length===1?roots[0]:null;
   const target=root&&marker(root.marker)&&local.includes(snp(root.marker)||'')?root.marker:'';
   const defaultTree=page.branches.some(b=>b.marker==='ROOT');
-  return {snp:value,target,issue:!target&&!defaultTree?'搜索返回节点缺少本节点SNP交叉依据，待核对':'',url:snpUrl(value)};
+  return {snp:value,target,issue:!target&&!defaultTree?'需登录TheYtree核对该候选节点的等价SNP列表':'',url:snpUrl(value),candidate:root&&!defaultTree?{id:root.id,marker:root.marker,count:root.equivalentCount}:undefined};
 }
 export function mappingTarget(checks:SnpCheck[]):string {
   const targets=[...new Set(checks.map(c=>c.target).filter(Boolean))];

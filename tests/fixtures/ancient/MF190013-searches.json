@@ -1,0 +1,669 @@
+{
+  "capturedAt": "2026-09-05T19:34:34.716Z",
+  "marker": "O-MF190013",
+  "nodeSnps": [
+    "MF190013",
+    "MF462543",
+    "Y86790"
+  ],
+  "source": "https://www.23mofang.com/ancestry/ytree/O-MF190013",
+  "searches": [
+    {
+      "snp": "MF190013",
+      "page": {
+        "branches": [
+          {
+            "equivalentCount": 2,
+            "id": "44659",
+            "parent": "21703",
+            "marker": "O-FT130664",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 7,
+            "id": "44660",
+            "parent": "44659",
+            "marker": "O-MF319249",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 0,
+            "id": "44661",
+            "parent": "44660",
+            "marker": "O-MF318617",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 0,
+            "id": "44662",
+            "parent": "44660",
+            "marker": "O-MF332536",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 31,
+            "id": "21713",
+            "parent": "44659",
+            "marker": "O-Y176332",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 0,
+            "id": "44658",
+            "parent": "21713",
+            "marker": "O-MF334155",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 2,
+            "id": "44653",
+            "parent": "21713",
+            "marker": "O-Y176354",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 0,
+            "id": "21714",
+            "parent": "44653",
+            "marker": "O-TYT231123",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 0,
+            "id": "44651",
+            "parent": "21714",
+            "marker": "O-BY74703",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 0,
+            "id": "44652",
+            "parent": "21714",
+            "marker": "O-MF300498",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 15,
+            "id": "49000",
+            "parent": "44653",
+            "marker": "O-FGC7600",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 36,
+            "id": "49277",
+            "parent": "49000",
+            "marker": "O-A26559",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 0,
+            "id": "50666",
+            "parent": "49277",
+            "marker": "O-TY528344",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 2,
+            "id": "44654",
+            "parent": "49000",
+            "marker": "O-BY221158",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 5,
+            "id": "44655",
+            "parent": "44654",
+            "marker": "O-MF294013",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 0,
+            "id": "44656",
+            "parent": "44655",
+            "marker": "O-MF294021",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "equivalentCount": 0,
+            "id": "44657",
+            "parent": "44655",
+            "marker": "O-MF313349",
+            "tentative": false,
+            "pending": false
+          }
+        ],
+        "samples": [
+          {
+            "au": "AU82800",
+            "name": "HB3009 河南省郑州市巩义市双槐树遗址 5150 ± 300年前",
+            "marker": "O-FT130664",
+            "parentId": "44659",
+            "path": [],
+            "tentative": false,
+            "type": "ancient",
+            "typeEvidence": "TheYtree公开树 stype=2",
+            "url": "https://www.theytree.com/sample/3e9bd18e254c6d3f4b1a55fca6257229.html",
+            "country": "中国",
+            "place": "",
+            "culture": "",
+            "period": "5150 ± 300 BP",
+            "coverage": 0.123954,
+            "depth": 1,
+            "paper": "",
+            "paperUrl": "",
+            "detail": false,
+            "issue": ""
+          },
+          {
+            "au": "AU82840",
+            "name": "HB3011 河南省郑州市巩义市双槐树遗址 5224 ± 60年前",
+            "marker": "O-FT130664",
+            "parentId": "44659",
+            "path": [],
+            "tentative": false,
+            "type": "ancient",
+            "typeEvidence": "TheYtree公开树 stype=2",
+            "url": "https://www.theytree.com/sample/9018a14469bac13481e06cc2c38e0b4a.html",
+            "country": "中国",
+            "place": "",
+            "culture": "",
+            "period": "5224 ± 60 BP",
+            "coverage": 0.0948585,
+            "depth": 1,
+            "paper": "",
+            "paperUrl": "",
+            "detail": false,
+            "issue": ""
+          }
+        ],
+        "unclassified": [],
+        "excluded": 10,
+        "valid": true,
+        "reason": ""
+      }
+    },
+    {
+      "snp": "MF462543",
+      "page": {
+        "branches": [
+          {
+            "id": "2884",
+            "parent": "8",
+            "marker": "F1",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "2885",
+            "parent": "8",
+            "marker": "F-M481",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "12200",
+            "parent": "13",
+            "marker": "K2C",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "12201",
+            "parent": "13",
+            "marker": "K2D",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "2897",
+            "parent": "38428",
+            "marker": "F4",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "44619",
+            "parent": "1",
+            "marker": "DENISOVANS",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "38077",
+            "parent": "14",
+            "marker": "K-MY1504",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "59",
+            "parent": "44625",
+            "marker": "A00",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "26525",
+            "parent": "15",
+            "marker": "K-Y86941",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "44624",
+            "parent": "44623",
+            "marker": "NEANDERTHALS",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "63",
+            "parent": "2",
+            "marker": "A0",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "31532",
+            "parent": "37333",
+            "marker": "F-F16167",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "37333",
+            "parent": "2886",
+            "marker": "F-F23806",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "70",
+            "parent": "3",
+            "marker": "A-M31",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "7655",
+            "parent": "7648",
+            "marker": "S",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "31092",
+            "parent": "7648",
+            "marker": "M",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "7648",
+            "parent": "7647",
+            "marker": "K2B1",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "2887",
+            "parent": "38428",
+            "marker": "F-M427",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "38428",
+            "parent": "2886",
+            "marker": "F-FT89939",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "2886",
+            "parent": "8",
+            "marker": "F-Y27277",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "80",
+            "parent": "4",
+            "marker": "A1B1",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "146",
+            "parent": "5",
+            "marker": "B",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "3306",
+            "parent": "10",
+            "marker": "H",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "40004",
+            "parent": "232",
+            "marker": "D",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "7265",
+            "parent": "12",
+            "marker": "LT",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "7266",
+            "parent": "7265",
+            "marker": "L",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "7393",
+            "parent": "7265",
+            "marker": "T",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "2901",
+            "parent": "9",
+            "marker": "G",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "7672",
+            "parent": "31091",
+            "marker": "Q",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "440",
+            "parent": "232",
+            "marker": "E",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "232",
+            "parent": "6",
+            "marker": "DE",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "12204",
+            "parent": "16",
+            "marker": "N",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "1587",
+            "parent": "7",
+            "marker": "C",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "5399",
+            "parent": "3411",
+            "marker": "J",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "3412",
+            "parent": "3411",
+            "marker": "I",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "3411",
+            "parent": "11",
+            "marker": "IJ",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "8366",
+            "parent": "31091",
+            "marker": "R",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "31091",
+            "parent": "31090",
+            "marker": "P-P226",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "31090",
+            "parent": "31089",
+            "marker": "P-P284",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "31089",
+            "parent": "31088",
+            "marker": "P-P337",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "31088",
+            "parent": "31086",
+            "marker": "P-M1254",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "31086",
+            "parent": "7670",
+            "marker": "P-F115",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "7670",
+            "parent": "7647",
+            "marker": "P",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "7647",
+            "parent": "13",
+            "marker": "K2B",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "17",
+            "parent": "16",
+            "marker": "O",
+            "tentative": false,
+            "pending": true
+          },
+          {
+            "id": "16",
+            "parent": "15",
+            "marker": "NO",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "15",
+            "parent": "14",
+            "marker": "K-M2311",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "14",
+            "parent": "30919",
+            "marker": "K-M2335",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "30919",
+            "parent": "13",
+            "marker": "K-M2308",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "13",
+            "parent": "12",
+            "marker": "K2-M526",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "12",
+            "parent": "11",
+            "marker": "K",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "11",
+            "parent": "10",
+            "marker": "IJK",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "10",
+            "parent": "9",
+            "marker": "HIJK",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "9",
+            "parent": "8",
+            "marker": "GHIJK",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "8",
+            "parent": "7",
+            "marker": "F",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "7",
+            "parent": "6",
+            "marker": "CF",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "6",
+            "parent": "5",
+            "marker": "CT",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "5",
+            "parent": "4",
+            "marker": "BT",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "4",
+            "parent": "3",
+            "marker": "A-P108",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "3",
+            "parent": "2",
+            "marker": "A-P305",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "2",
+            "parent": "44625",
+            "marker": "A0-T",
+            "tentative": false,
+            "pending": false
+          },
+          {
+            "id": "1",
+            "parent": "0",
+            "marker": "ROOT",
+            "tentative": false,
+            "pending": false
+          }
+        ],
+        "samples": [],
+        "unclassified": [],
+        "excluded": 0,
+        "valid": true,
+        "reason": ""
+      }
+    },
+    {
+      "snp": "Y86790",
+      "page": {
+        "branches": [
+          {
+            "equivalentCount": 13,
+            "id": "17173",
+            "parent": "52229",
+            "marker": "O-BY136818",
+            "tentative": false,
+            "pending": true
+          }
+        ],
+        "samples": [],
+        "unclassified": [],
+        "excluded": 0,
+        "valid": true,
+        "reason": ""
+      }
+    }
+  ]
+}

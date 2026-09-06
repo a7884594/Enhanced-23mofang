@@ -7,14 +7,14 @@ async function get(key:string):Promise<any>{return (await chrome.storage.local.g
 const starts=new Map<number,Promise<any>>();
 async function startForTab(tab:number,message:any){
   const previous=starts.get(tab)||Promise.resolve();
-  const work=previous.catch(()=>{}).then(async()=>{const old=await get(ownerKey(tab));if(old)await engine.pause(old);const j=await engine.start(message.marker,message.scope==='downstream'?'downstream':'direct',!!message.refresh,message.snps);await chrome.storage.local.set({[ownerKey(tab)]:j.id});return j;});
+  const work=previous.catch(()=>{}).then(async()=>{const old=await get(ownerKey(tab));if(old)await engine.pause(old);const j=await engine.start(message.marker,message.scope==='downstream'?'downstream':'direct',!!message.refresh,message.snps);await chrome.storage.local.set({[ownerKey(tab)]:j.id,[`anc.parentTab.${j.id}`]:tab});return j;});
   starts.set(tab,work);try{return await work;}finally{if(starts.get(tab)===work)starts.delete(tab);}
 }
 async function owned(id:unknown,sender:chrome.runtime.MessageSender){if(typeof id!=='string'||!sender.tab?.id||await get(ownerKey(sender.tab.id))!==id)throw Error('此页面没有该查询任务');return id;}
 function cleanPage(p:TreePage):TreePage {
   if(!p||!Array.isArray(p.branches)||!Array.isArray(p.samples))throw Error('网页同步数据格式错误');
   // Normalize again at the privileged boundary; never persist arbitrary page fields.
-  const rows:any[]=p.branches.slice(0,150000).map(b=>({hid:b.id,parent:b.parent,name:b.marker,isParent:b.pending?1:0}));
+  const rows:any[]=p.branches.slice(0,150000).map(b=>({hid:b.id,parent:b.parent,name:b.marker,isParent:b.pending?1:0,equivalent_mutations:{equivalent_count:b.equivalentCount}}));
   for(const s of [...p.samples,...(p.unclassified||[])].slice(0,30000)){
     if(!/^AU\d+$/.test(s.au))continue;
     rows.push({sid:s.au.slice(2),parent:s.parentId,name:s.name,haplogroup:s.marker,stype:s.type==='ancient'?2:undefined,sid_encrypted:sourceUrl(s.url)?new URL(s.url).pathname.split('/').at(-1)!.replace('.html',''):'',period:s.period,country:s.country,coverage:s.coverage,average_depth:s.depth});
@@ -43,15 +43,24 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
         await engine.pause(id);const waiting=await engine.get(id);if(!waiting)throw Error('任务不存在');waiting.status='sync';waiting.complete=false;waiting.message='等待正常源站网页同步';await engine.save(waiting);
         // Explicit button action opens a normal, visible source page. No bypass,
         // hidden authentication or background tab farming.
-        await chrome.storage.local.set({[`anc.syncTarget.${id}`]:j.target});
-        const opened=await chrome.tabs.create({url:treeUrl(j.target),active:true});
+        const target=j.snpChecks?.find(v=>v.issue&&v.candidate)?.candidate?.marker||j.target;
+        await chrome.storage.local.set({[`anc.syncTarget.${id}`]:target});
+        const opened=await chrome.tabs.create({url:treeUrl(target),active:true});
         if(opened.id==null)throw Error('无法打开源站页面');
-        await chrome.storage.local.set({[`anc.sync.${opened.id}`]:id});return {opened:true};
+        await chrome.storage.local.set({[`anc.sync.${opened.id}`]:id,[`anc.syncTab.${id}`]:opened.id});return {opened:true};
       }
     }
     if(origin===TY&&tab!=null){
-      const id=await get(`anc.sync.${tab}`);if(message.type==='anc.sourceContext')return id?engine.get(id):null;if(!id)throw Error('这个源站页面没有待同步任务');
+      const id=await get(`anc.sync.${tab}`);
+      const parent=id?await get(`anc.parentTab.${id}`):null;
+      const bound=id&&await get(`anc.syncTab.${id}`)===tab&&parent!=null&&await get(ownerKey(parent))===id;
+      if(message.type==='anc.sourceContext')return bound?engine.get(id):null;
+      if(!bound)throw Error('这个源站页面的同步任务已失效');
       const j=await engine.get(id);if(!j||sourceMarker(new URL(sender.url!).pathname)!==(await get(`anc.syncTarget.${id}`)||j.target))throw Error('源站支系与查询不一致');
+      if(message.type==='anc.sourceBegin')return engine.beginSource(id);
+      if(message.type==='anc.sourceProblem')return engine.sourceProblem(id,safeText(message.error,500),safeText(message.mappingToken,100));
+      if(['anc.sourceSnp','anc.sourceEquivalent'].includes(message.type)&&(!j.mappingToken||j.mappingToken!==message.mappingToken))throw Error('SNP核对已暂停或过期');
+      if(message.type==='anc.sourceEquivalent')return engine.sourceEquivalent(id,safeText(message.candidateId,100),message.groups,message.method==='visible-dialog'?'visible-dialog':'authenticated-page',message.mappingToken);
       if(message.type==='anc.sourceSnp')return engine.sourceSnp(id,safeText(message.snp,100),cleanPage(message.page));
       if(message.type==='anc.source'){
         if(j.nodeSnps&&!j.mappingReady)throw Error('请先完成节点全部SNP核对');

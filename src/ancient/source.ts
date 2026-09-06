@@ -1,4 +1,5 @@
 import {A_CHANNEL,TY,sourceMarker,queryUrl,nodeUrl,normalizeTree,sourceUrl,type TreePage,type QueryResult} from './model';
+import {equivalentUrl,equivalentEvidence,dialogGroups} from './equivalent';
 import {snpUrl} from './snps';
 import {parseDetail,parseTreeDOM} from './parser';
 async function send(message:any){const r=await chrome.runtime.sendMessage(message);if(!r?.ok)throw Error(r?.error||'扩展通信失败');return r.value;}
@@ -6,7 +7,7 @@ let rendered:TreePage|null=null;let running=false;let text:HTMLElement|null=null
 window.addEventListener('message',event=>{if(event.source===window&&event.origin===location.origin&&event.data?.channel===A_CHANNEL&&event.data?.type==='source-tree'&&event.data.marker===sourceMarker(location.pathname))rendered=event.data.page;});
 let nextRequest=0;
 async function fetchPage(url:string){
-  const u=new URL(url);if(u.origin!==TY||!(sourceUrl(url)||u.pathname==='/api/ysnp/theytree/'||u.pathname==='/api/ysnp/theytree/node/'))throw Error('无效源站地址');
+  const u=new URL(url);if(u.origin!==TY||!(sourceUrl(url)||u.pathname==='/api/ysnp/theytree/'||u.pathname==='/api/ysnp/theytree/node/'||u.pathname==='/api/ysnp/theytree/getEquivalentMutationsDetail'))throw Error('无效源站地址');
   const wait=Math.max(0,nextRequest-Date.now());if(wait)await new Promise(r=>setTimeout(r,wait));nextRequest=Date.now()+500;
   const r=await fetch(url,{credentials:'same-origin',signal:AbortSignal.timeout(25000)});
   if(!r.ok||new URL(r.url).origin!==TY||r.url.includes('/user/login'))throw Error(`源站需要正常访问（HTTP ${r.status}），请在网页处理后再次同步`);
@@ -14,10 +15,11 @@ async function fetchPage(url:string){
 }
 async function synchronize(force=false){
   if(running)return;running=true;
-  let syncToken='';
+  let syncToken='';let mappingToken='';
   try{
     let job:QueryResult=await send({type:'anc.sourceContext'});if(!job)return;
     if(job.status==='paused'&&!force){text!.textContent='查询已暂停；可点击“重新同步当前树”继续';return;}
+    job=await send({type:'anc.sourceBegin'});mappingToken=job.mappingToken||'';
     text!.textContent='正在读取当前TheYtree树…';
     window.postMessage({channel:A_CHANNEL,type:'read-source'},location.origin);
     await new Promise(r=>setTimeout(r,350));
@@ -26,8 +28,25 @@ async function synchronize(force=false){
         if(job.snpChecks?.some(v=>v.snp===value))continue;
         const state=await send({type:'anc.sourceContext'});if(state?.status==='paused')return;
         const p=normalizeTree(JSON.parse(await fetchPage(snpUrl(value))));if(!p.valid)throw Error(p.reason);
-        job=await send({type:'anc.sourceSnp',snp:value,page:p});
+        job=await send({type:'anc.sourceSnp',snp:value,page:p,mappingToken});
         text!.textContent=`SNP核对 ${job.snpChecks?.length} / ${job.nodeSnps!.length}`;
+      }
+      const candidates=[...new Map((job.snpChecks||[]).filter(v=>v.issue&&v.candidate).map(v=>[v.candidate!.id,v.candidate!])).values()];
+      for(const c of candidates){
+        const state=await send({type:'anc.sourceContext'});if(state?.mappingToken!==mappingToken||state.status==='paused')return;
+        text!.textContent=`正在读取 ${c.marker} 的等价SNP列表（使用本页正常登录状态）…`;
+        let groups:unknown;let method:'authenticated-page'|'visible-dialog'='authenticated-page';
+        try{
+          const response=JSON.parse(await fetchPage(equivalentUrl(c)));
+          if(response.code!==1||!Array.isArray(response.data?.equivalent_snps))throw Error('请先在TheYtree正常登录，再点击“重新同步当前树”。也可打开节点的 +N SNPs 弹窗后同步。');
+          groups=response.data.equivalent_snps;
+        }catch(error){
+          const modal=document.querySelector<HTMLElement>('#equivalentMutationsModal');
+          const visible=modal&&modal.getBoundingClientRect().height>0;
+          groups=visible?dialogGroups(document,c):null;if(!groups)throw error;method='visible-dialog';
+        }
+        equivalentEvidence(c,groups,job.nodeSnps!,Date.now(),method);
+        job=await send({type:'anc.sourceEquivalent',candidateId:c.id,groups,method,mappingToken});
       }
       if(!job.mappingReady)throw Error(job.message);
     }
@@ -50,7 +69,7 @@ async function synchronize(force=false){
       text!.textContent=`正在同步 ${job.target}：已确认 ${job.samples.length} 条，剩余 ${job.details.length} 条详情`;
     }
     job=await send({type:'anc.sourceFinish',syncToken});text!.textContent=`${job.message}。请回到23魔方查看。`;
-  }catch(e){if(text)text.textContent=e instanceof Error?e.message:String(e);try{await send({type:'anc.sourceFinish',error:String(e),syncToken});}catch{}}
+  }catch(e){if(text)text.textContent=e instanceof Error?e.message:String(e);try{await send(syncToken?{type:'anc.sourceFinish',error:String(e),syncToken}:{type:'anc.sourceProblem',error:String(e),mappingToken});}catch{}}
   finally{running=false;}
 }
 let tries=0;
