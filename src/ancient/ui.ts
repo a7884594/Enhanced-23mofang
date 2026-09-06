@@ -94,9 +94,13 @@ export function bootAncientUI(){
       }
       button.dataset.marker=name;
       button.setAttribute('aria-label',`${name} 古DNA`);
+      paintAncientBadge(button,counts.get(name)?.count,counts.get(name)?.complete);
       const matrix=node.getScreenCTM();if(!matrix?.a)continue;
-      const right=Math.max(...[...node.children].filter(e=>e!==button).map(e=>e.getBoundingClientRect().right));
-      const x=(right-matrix.e)/matrix.a+8;const transform=`translate(${x},3)`;if(button.getAttribute('transform')!==transform)button.setAttribute('transform',transform);
+      const snp=node.querySelector<SVGGElement>(':scope > .snp-wrapper');const bounds=snp?.getBoundingClientRect();
+      const right=bounds?.width?bounds.right:Math.max(...[...node.children].filter(e=>e!==button).map(e=>e.getBoundingClientRect().right));
+      const height=Number(button.querySelector('rect')?.getAttribute('height')||20);
+      const y=bounds?.height&&matrix.d?(bounds.top+bounds.height/2-matrix.f)/matrix.d-height/2:3;
+      const x=(right-matrix.e)/matrix.a+3;const transform=`translate(${x},${y})`;if(button.getAttribute('transform')!==transform)button.setAttribute('transform',transform);
     }
     if(!nodes.length&&branchPage&&!youngBranch){
       const heading=document.querySelector('h1');if(heading&&!document.getElementById('mofang-ancient-entry')){const b=document.createElement('button');b.id='mofang-ancient-entry';b.dataset.marker=route;paintAnalysisEntry(b,counts.get(route)?.count,counts.get(route)?.complete);b.onclick=()=>{const m=treeMarker(location.pathname);if(m)open(m);};heading.after(b);}
