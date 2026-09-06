@@ -6,10 +6,10 @@ import {formationAge,analysisAge,showAncientEntry} from '../src/ancient/age';
 import {formalNodes} from '../src/ancient/ui';
 const {JSDOM}=createRequire(import.meta.url)('jsdom');
 const ui=(await build({entryPoints:['src/ancient/ui.ts'],bundle:true,write:false,format:'iife'})).outputFiles[0].text;
-test('age boundary uses displayed formation years and leaves unknown ages available',()=>{
+test('age boundary uses displayed formation years and skips unknown ages',()=>{
  assert.equal(formationAge('形成时间距今 999 年'),999);assert.equal(showAncientEntry(999),false);assert.equal(showAncientEntry(1000),true);
  assert.equal(formationAge('形成时间距今约1.2万年'),12000);assert.equal(formationAge('形成时间距今 1,000 年'),1000);
- assert.equal(formationAge('宗亲999人'),null);assert.equal(showAncientEntry(null),true);assert.equal(formationAge('形成时间距今950-1100年'),null);
+ assert.equal(formationAge('宗亲999人'),null);assert.equal(showAncientEntry(null),false);assert.equal(formationAge('形成时间距今950-1100年'),null);
 });
 const tree=(name='O-F8',age=6910)=>`<div class="tree-wrapper"><svg><g class="node"><text class="label">${name}</text><text class="time">形成时间距今${age}年</text></g><g class="node"><text class="label">O-Y999</text><text class="time">形成时间距今999年</text></g><g class="node"><text class="label">O-Y1000</text><text class="time">形成时间距今1000年</text></g><g class="node"><g class="person-container"></g><text class="label">O-P100</text></g></svg></div>`;
 test('formal node list excludes under-1000-year branches before geometry or badge requests',()=>{

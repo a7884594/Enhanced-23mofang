@@ -36,7 +36,7 @@ test('research query caches confirmed detail and projected child results in an i
  const before=calls.length,child=await engine.start('O-Y5702','direct');assert.equal(child.cached,true);assert.equal(child.samples[0].au,'AU38407');assert.equal(calls.length,before);
  assert.equal(store.get('anc.cache.fast4.O-F8.downstream').samples[0].au,'WRONG_CATEGORY');
 });
-test('research entry is available on recent branches',()=>{assert.equal(R.showAncientEntry(410),true);});
+test('research entry is available on recent branches',()=>{assert.equal(R.showAncientEntry(410),true);assert.equal(R.showAncientEntry(null),false);});
 test('research normal-page synchronization verifies detail and returns the research task',async()=>{
  const code=(await build({entryPoints:['src/ancient/source.ts'],bundle:true,write:false,format:'iife',define:{__RESEARCH__:'true'}})).outputFiles[0].text;
  const store=new Map();let seq=0;const engine=new R.AncientEngine({get:async(k:string)=>structuredClone(store.get(k)),set:async(k:string,v:any)=>{store.set(k,structuredClone(v));},now:()=>Date.now(),id:()=>`sync-${++seq}`,request:async()=>{throw Error('Not a background request');}});
@@ -61,7 +61,7 @@ test('both worker handlers share one gate but keep task owners, results and mess
 });
 test('both UIs coexist with separate buttons, messages and panels; research has no age cutoff',async()=>{
  const bundles=await Promise.all([false,true].map(async research=>(await build({entryPoints:['src/ancient/ui.ts'],bundle:true,write:false,format:'iife',define:{__RESEARCH__:String(research)}})).outputFiles[0].text));
- const dom=new JSDOM('<div class="tree-wrapper"><svg><g class="node"><text class="label">O-F8</text><text class="time">形成时间距今6910年</text></g><g class="node"><text class="label">O-Y5702</text><text class="time">形成时间距今410年</text></g></svg></div>',{url:'https://www.23mofang.com/ancestry/ytree/O-F8',runScripts:'outside-only',pretendToBeVisual:true});
+ const dom=new JSDOM('<div class="tree-wrapper"><svg><g class="node"><text class="label">O-F8</text><text class="time">形成时间距今6910年</text></g><g class="node"><text class="label">O-Y5702</text><text class="time">形成时间距今410年</text></g><g class="node"><text class="label">O-UNKNOWN1</text></g></svg></div>',{url:'https://www.23mofang.com/ancestry/ytree/O-F8',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window as any,calls:any[]=[];w.SVGElement.prototype.getScreenCTM=()=>({a:1,e:0});
  w.chrome={runtime:{sendMessage:async(m:any)=>{calls.push(m);if(m.type.endsWith('.counts'))return {ok:true,value:{}};return {ok:true,value:{id:'demo',marker:m.marker,target:m.marker,scope:'direct',status:'paused',complete:false,mapping:'同名',samples:[],unknown:[],branches:[],checked:[],queue:[],details:[],failures:[],updatedAt:Date.now(),message:'模拟暂停'}};}}};
  try{
@@ -69,7 +69,7 @@ test('both UIs coexist with separate buttons, messages and panels; research has 
   assert.equal(w.document.querySelectorAll('[data-mofang-ancient]').length,1);assert.equal(w.document.querySelectorAll('[data-mofang-research]').length,2);
   w.document.querySelector('[data-mofang-ancient]').onclick(new w.Event('click'));await new Promise(r=>setTimeout(r,10));
   w.document.querySelector('[data-mofang-research]').onclick(new w.Event('click'));await new Promise(r=>setTimeout(r,10));
-  assert.ok(calls.some(c=>c.type==='res.start'));assert.ok(calls.some(c=>c.type==='anc.start'));
+  assert.ok(calls.filter(c=>c.type.endsWith('.counts')).every(c=>!c.markers.includes('O-UNKNOWN1')));assert.ok(calls.some(c=>c.type==='res.start'));assert.ok(calls.some(c=>c.type==='anc.start'));
   assert.equal(w.document.querySelector('#mofang-ancient-panel').shadowRoot.querySelector('.panel').hidden,true);
   const panel=w.document.querySelector('#mofang-research-panel').shadowRoot;assert.equal(panel.querySelector('.panel').hidden,false);assert.match(panel.querySelector('.title').textContent,/科研/);assert.equal(panel.querySelector('[aria-label="年代排序"]').hidden,true);
  }finally{dom.window.close();}

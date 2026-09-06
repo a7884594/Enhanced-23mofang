@@ -159,7 +159,7 @@ test('partial detail failures can be retried without repeating completed details
   h.io.request=normal;await h.engine.resume(start.id);const done=await settle(h,start.id);assert.equal(done.complete,true);
 });
 test('formal tree adapter excludes personal rows even if they contain a haplogroup label',()=>{
-  const doc=parseHTML('<div class="tree-wrapper"><svg><g class="node"><text class="label">O-F8</text></g><g class="node"><g class="person-container"></g><text class="label">O-MF999</text></g><g class="node"><text class="label"></text></g></svg></div>').document;
+  const doc=parseHTML('<div class="tree-wrapper"><svg><g class="node"><text class="label">O-F8</text><text class="time">形成时间距今6910年</text></g><g class="node"><g class="person-container"></g><text class="label">O-MF999</text></g><g class="node"><text class="label"></text></g></svg></div>').document;
   assert.deepEqual(formalNodes(doc as unknown as Document).map(n=>n.name),['O-F8']);
 });
 test('background request gate enforces one active request and 500ms spacing',async()=>{
