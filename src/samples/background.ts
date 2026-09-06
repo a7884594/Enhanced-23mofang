@@ -3,12 +3,12 @@ import {query} from './service';
 const gate:RequestGate=((globalThis as any).__mofangSharedGate??=new RequestGate());
 let writes:Promise<unknown>=Promise.resolve();
 async function save(key:string,value:any){
-  if(!key.startsWith('samples.v1.')){await chrome.storage.local.set({[key]:value});return;}
+  if(!key.startsWith('samples.v2.')){await chrome.storage.local.set({[key]:value});return;}
   const work=writes.catch(()=>{}).then(async()=>{
     const bytes=new TextEncoder().encode(JSON.stringify(value)).length;if(bytes>4_000_000)throw Error('样本结果过大，请查询更小支系');
     const stored=(await chrome.storage.local.get('samples.cacheIndex'))['samples.cacheIndex'];
     let index: {key:string;bytes:number;at:number}[]=Array.isArray(stored)?stored.filter(x=>typeof x?.key==='string'&&Number.isFinite(x.bytes)&&Number.isFinite(x.at)):[];
-    index=index.filter(x=>x.key!==key&&x.key.startsWith('samples.v1.')).sort((a,b)=>a.at-b.at);const removed:string[]=[];
+    index=index.filter(x=>x.key!==key&&/^samples\.v[12]\./.test(x.key)).sort((a,b)=>a.at-b.at);const removed:string[]=[];
     while(index.length>=20||index.reduce((sum,x)=>sum+x.bytes,0)+bytes>4_000_000){const old=index.shift();if(!old)break;removed.push(old.key);}
     if(removed.length)await chrome.storage.local.remove(removed);index.push({key,bytes,at:Date.now()});await chrome.storage.local.set({[key]:value,'samples.cacheIndex':index});
   });writes=work;await work;

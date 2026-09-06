@@ -47,3 +47,8 @@
 ## 1.4.1 FTDNA节点名称核对
 
 依据源站公开脚本中的checkYdnaLink和checkHaplo流程，原文件403/404时读取 https://discover.familytreedna.com/HaplogroupSearch/O-F175 ，返回O-M175；再核对 https://discover.familytreedna.com/resources/classictree-y/O-M175.json 根节点SNP包含F175。只有这一双重证据成立才改用标准名。并非将403作为任意重试或跳过访问控制的理由。测试夹具ftdna-O-M175-root.json只保留真实根节点名称、variants、synonyms；空样本和children是测试裁剪，不代表源站无样本。
+
+
+## 1.4.2 续查完整性修正
+
+YFull R-FGC9988公开HTML于2026-09-06重新采集并裁剪为树测试夹具。空星号分组为已加载的基部分组，不能据空列表反复请求。TheYtree子项响应通过已请求父节点ID建立上下文，拒绝无关默认树；有样本子项即不应仅因没有子支而被判为未加载，low_count不足仍保留待加载。无进展时暂停该子树，刷新后可重试。

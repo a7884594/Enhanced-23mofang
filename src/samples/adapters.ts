@@ -22,7 +22,7 @@ export function yfull(html:string):Node[]{
       const note=text(row.querySelector(':scope > .yf-sinf')?.getAttribute('title'));if(note){s.evidence+='；源站注释：'+note;s.uncertain=/^[=<>?]|\?/.test(note);}
       n.samples.push(s);
     }
-    n.pending=!!li.querySelector(':scope > a[href]')&&!n.samples.length&&!li.querySelector(':scope > ul > li');nodes.push(n);
+    n.pending=!name.endsWith('*')&&!!li.querySelector(':scope > a[href]')&&!n.samples.length&&!li.querySelector(':scope > ul > li');nodes.push(n);
   }
   return nodes;
 }
@@ -48,13 +48,25 @@ export function ftdna(raw:any):Node[]{
 }
 
 /** Personal names, free text, coverage and contact fields are discarded at the adapter boundary. */
-export function theytree(raw:any):Node[]{
-  const rows=raw?.data?.ytree;if(raw?.code!==1||!Array.isArray(rows))throw Error('TheYtree未返回公开树，可能需要登录或源站同步');
+export function theytree(raw:any,requested?:Node):Node[]{
+  let rows=raw?.data?.ytree;if(raw?.code!==1||!Array.isArray(rows))throw Error('TheYtree未返回公开树，可能需要登录或源站同步');
+  if(rows.length>150000)throw Error('支系过大，请选择更小节点');
+  if(requested){
+    if(!requested.sourceId||!rows.length)throw Error('子树未返回可核实的子项');
+    const own=rows.find((r:any)=>r.sid==null&&String(r.hid)===requested.sourceId);
+    if(own&&marker(own.name)!==requested.name)throw Error('子树父节点名称不一致');
+    const allowed=new Set([requested.sourceId]);
+    // Resolve reachable child IDs without accepting a disconnected/default tree.
+    const byParent=new Map<string,string[]>();for(const r of rows)if(r.sid==null&&r.hid!=null){const p=String(r.parent);byParent.set(p,[...(byParent.get(p)||[]),String(r.hid)]);}
+    const queue=[requested.sourceId];for(let i=0;i<queue.length;i++)for(const id of byParent.get(queue[i])||[])if(!allowed.has(id)){allowed.add(id);queue.push(id);}
+    if(rows.some((r:any)=>!(r.sid==null&&String(r.hid)===requested.sourceId)&&!allowed.has(String(r.parent))))throw Error('子树包含不属于请求父节点的数据');
+    if(!own)rows=[{hid:requested.sourceId,name:requested.name,parent:'',isParent:0},...rows];
+  }
   const nodes:Node[]=[],ids=new Map<string,Node>();if(rows.length>150000)throw Error('支系过大，请选择更小节点');
-  for(const r of rows){if(r.hid==null||r.sid!=null)continue;const name=marker(r.name);if(!name)continue;const n=node(name,String(r.parent??''));n.sourceId=/^\d+$/.test(String(r.hid))?String(r.hid):undefined;ids.set(String(r.hid),n);nodes.push(n);n.pending=Number(r.isParent)===1;}
+  const childCounts=new Map<string,number>();for(const r of rows)childCounts.set(String(r.parent),(childCounts.get(String(r.parent))||0)+1);
+  for(const r of rows){if(r.hid==null||r.sid!=null)continue;const name=marker(r.name);if(!name)continue;const n=node(name,String(r.parent??''));n.sourceId=/^\d+$/.test(String(r.hid))?String(r.hid):undefined;ids.set(String(r.hid),n);nodes.push(n);const count=childCounts.get(String(r.hid))||0;n.pending=!!r.isParent&&(!count||Number(r.low_count||0)>count);}
   for(const n of nodes)n.parent=ids.get(n.parent)?.name||'';
   // Re-evaluate after all parent IDs have been resolved.
-  const parents=new Set(nodes.map(n=>n.parent));for(const n of nodes)if(parents.has(n.name))n.pending=false;
   for(const r of rows){if(r.sid==null||!/^\d+$/.test(String(r.sid)))continue;const n=ids.get(String(r.parent));if(!n)continue;
     if(r.stype==null||!['0','1','2'].includes(String(r.stype)))continue;
     const kind=String(r.stype)==='0'?'personal':String(r.stype)==='1'?'scientific':'ancient';

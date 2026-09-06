@@ -9,20 +9,22 @@ export async function query(io:IO,provider:Provider,value:string,refresh:boolean
   const name=marker(value);if(!name||!providers.includes(provider))throw Error('无效支系或来源');
   let target=name,mapping='同名标记对应；挂载关系以该来源为准';
   if(provider==='theytree'){const known=await loadMatch(io,name);target=known?.target||resolveTarget(name).target;if(target!==name)mapping='复用TheYtree已核实对应；不推及其他来源';}
-  const key=`samples.v1.${provider}.${name}.${target}`;const cached=await io.get(key);
+  const key=`samples.v2.${provider}.${name}.${target}`;const cached=await io.get(key);
   if(!refresh&&cached?.status==='ready'&&cached.updatedAt<=io.now()&&io.now()-cached.updatedAt<TTL){
     if(!more)return {...cached,cached:true};
     const result:Result=structuredClone(cached);result.cached=false;
-    for(const pending of result.nodes.filter(n=>n.pending).slice(0,8)){
+    let loaded=0;
+    for(const pending of result.nodes.filter(n=>n.pending&&!n.loadBlocked).slice(0,8)){
       if(provider==='theytree'&&!pending.sourceId)continue;
       const url=provider==='theytree'?`https://www.theytree.com/api/ysnp/theytree/node/?hid=${pending.sourceId}`:provider==='yfull'?treeLink(provider,pending.name):`https://discover.familytreedna.com/resources/classictree-y/${encodeURIComponent(pending.name)}.json`;
       try{
         const r=await io.request(url,signal);if(signal.aborted)throw Error('已取消');if(r.status!==200)throw Error(`HTTP ${r.status}`);if(r.body.length>8_000_000||new URL(r.url).origin!==new URL(url).origin)throw Error('响应范围或大小异常');
-        const children=provider==='yfull'?yfull(r.body):provider==='ftdna'?ftdna(JSON.parse(r.body)):theytree(JSON.parse(r.body));const own=children.find(n=>n.name===pending.name);if(!own)throw Error('子树未确认节点');
+        const children=provider==='yfull'?yfull(r.body):provider==='ftdna'?ftdna(JSON.parse(r.body)):theytree(JSON.parse(r.body),pending);const own=children.find(n=>n.name===pending.name);if(!own)throw Error('子树未确认节点');
         if(children.length===1&&own.pending)throw Error('源站未提供更多可读下游');
-        const merged=new Map(result.nodes.map(n=>[n.name,n]));for(const n of children){const old=merged.get(n.name);merged.set(n.name,{...n,parent:n.parent||old?.parent||''});}if(merged.size>15000)throw Error('支系过大，请缩小范围');result.nodes=[...merged.values()];
-        result.message='已继续加载最多8个子树；可再次继续';
-      }catch(e){if(signal.aborted)throw e;result.message=`部分读取停止：${String(e)}。保留已取得数据`;break;}
+        const merged=new Map(result.nodes.map(n=>[n.name,n]));for(const n of children){const old=merged.get(n.name);const samples=new Map((old?.samples||[]).map(s=>[s.id,s]));for(const s of n.samples)samples.set(s.id,s);merged.set(n.name,{...n,parent:n.parent||old?.parent||'',samples:[...samples.values()]});}if(merged.size>15000)throw Error('支系过大，请缩小范围');const next=[...merged.values()];
+        if(JSON.stringify(next)===JSON.stringify(result.nodes))throw Error('源站未返回新增内容');result.nodes=next;loaded++;
+        result.message=`本次已读取${loaded}个子树`;
+      }catch(e){if(signal.aborted)throw e;pending.loadBlocked=String(e);result.message=`部分读取停止：${String(e)}。保留已取得数据；刷新后可重试`;break;}
     }
     result.complete=result.nodes.every(n=>!n.pending);result.updatedAt=io.now();if(signal.aborted)throw Error('已取消');await io.set(key,result);return result;
   }

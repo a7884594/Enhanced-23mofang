@@ -2,7 +2,7 @@ import {marker} from '../ancient/model';
 export type Provider='theytree'|'yfull'|'ftdna';
 export type Kind='ancient'|'scientific'|'personal'|'modern'|'unknown';
 export interface Sample {id:string;kind:Kind;name:string;region:string;period:string;culture:string;evidence:string;uncertain:boolean;url:string}
-export interface Node {name:string;parent:string;sourceId?:string;snps:string[];pending:boolean;samples:Sample[];groups:{region:string;count:number}[]}
+export interface Node {name:string;parent:string;sourceId?:string;snps:string[];pending:boolean;loadBlocked?:string;samples:Sample[];groups:{region:string;count:number}[]}
 export interface Result {provider:Provider;marker:string;target:string;url:string;mapping:string;nodes:Node[];updatedAt:number;complete:boolean;status:'ready'|'unmatched'|'error';message:string;cached?:boolean;modernAvailable?:boolean;ancientAvailable?:boolean}
 export const providers:Provider[]=['theytree','yfull','ftdna'];
 export const labels:Record<Provider,string>={theytree:'TheYtree',yfull:'YFull',ftdna:'FTDNA'};
