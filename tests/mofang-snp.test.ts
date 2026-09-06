@@ -8,7 +8,7 @@ test('already loaded public position performs no API request and leaks no report
 });
 test('public node lookup uses only keyword and node ID and distinguishes missing coordinates',async()=>{
  const calls:any[]=[];const api={getTreeDetailByNode:async(...args:any[])=>{calls.push(args);return {code:0,data:{id:'O-MF920596',rsids:['MF920605'],private:'DO_NOT_COPY'}};},getTreeNodeById:async(...args:any[])=>{calls.push(args);return {code:0,data:{id:'O-MF920596',rsids:['MF920605']}};}};
- const r=await lookupMofang('MF920605',api);assert.deepEqual(calls,[['MF920605',false],['O-MF920596']]);assert.equal(r.rows[0].position,'未提供坐标');assert.match(r.message,/没有返回坐标/);assert.ok(!JSON.stringify(r).includes('DO_NOT_COPY'));
+ const r=await lookupMofang('MF920605',api);assert.deepEqual(calls,[['MF920605',false],['O-MF920596']]);assert.equal(r.status,'unsupported');assert.equal(r.rows.length,0);assert.match(r.message,/不支持/);assert.ok(!JSON.stringify(r).includes('DO_NOT_COPY'));
  api.getTreeNodeById=async()=>({code:0,data:{id:'O-MF920596',rsids:['MF920605#note%15711271:C->A']}});assert.equal((await lookupMofang('MF920605',api)).rows[0].position,'hg19:15711271');
 });
 test('source selector changes do not query and selected source results stay inline',async()=>{

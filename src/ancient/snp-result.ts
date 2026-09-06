@@ -1,6 +1,6 @@
 import {parseHTML} from 'linkedom';
 import {snp} from './snps';
-export interface SnpResult {status:'ok'|'empty'|'login'|'error';query:string;url:string;message:string;rows:{name:string;position:string;mutation:string;time:string}[]}
+export interface SnpResult {status:'ok'|'empty'|'login'|'unsupported'|'error';query:string;url:string;message:string;rows:{name:string;position:string;mutation:string;time:string}[]}
 export function snpLookupUrl(query:string){const u=new URL('https://www.theytree.com/user/ysnp/snps');u.search=new URLSearchParams({snpname:query,hg38:'',t2t2:''}).toString();return u.href;}
 export function parseSnpResult(html:string,query:string):SnpResult {
   const result:SnpResult={status:'error',query,url:snpLookupUrl(query),message:'未识别到SNP结果表，请登录源站后重试，或查看原页。',rows:[]};
