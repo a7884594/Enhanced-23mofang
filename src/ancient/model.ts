@@ -1,9 +1,11 @@
-export const A_CHANNEL='mofang-ancient/v1';
+import {SAMPLE_KIND,STYPE} from './profile';
+import {profileText} from './profile';
+export const A_CHANNEL=profileText('mofang-ancient/v1');
 export const TY='https://www.theytree.com';
 export const TTL=7*24*60*60*1000;
 export type Scope='direct'|'downstream';
 export interface Branch {equivalentCount?:number;id:string;parent:string;marker:string;pending:boolean;tentative:boolean}
-export interface AncientSample {au:string;name:string;marker:string;parentId:string;path:string[];tentative:boolean;type:'ancient'|'unknown';typeEvidence:string;url:string;country:string;place:string;culture:string;period:string;coverage:number|null;depth:number|null;paper:string;paperUrl:string;detail:boolean;issue:string}
+export interface AncientSample {au:string;name:string;marker:string;parentId:string;path:string[];tentative:boolean;type:'ancient'|'scientific'|'unknown';typeEvidence:string;url:string;country:string;place:string;culture:string;period:string;coverage:number|null;depth:number|null;paper:string;paperUrl:string;detail:boolean;issue:string}
 export interface TreePage {branches:Branch[];samples:AncientSample[];unclassified:AncientSample[];excluded:number;valid:boolean;reason:string}
 export interface QueryResult {projectedVersion?:number;cachedChildren?:number;cacheOrigin?:{marker:string;at:number};mappingVerifiedAt?:number;mappingToken?:string;nodeSnps?:string[];snpChecks?:import("./snps").SnpCheck[];mappingReady?:boolean;id:string;marker:string;target:string;scope:Scope;status:'running'|'complete'|'partial'|'paused'|'sync'|'unmatched'|'error';mapping:string;createdAt:number;updatedAt:number;cached:boolean;forceRefresh?:boolean;syncToken?:string;complete:boolean;samples:AncientSample[];unknown:AncientSample[];branches:Branch[];checked:string[];queue:string[];details:string[];failures:{key:string;message:string}[];excluded:number;message:string}
 export const safeText=(v:unknown,max=1200)=>typeof v==='string'?v.trim().slice(0,max):'';
@@ -31,12 +33,12 @@ export function normalizeTree(raw:any):TreePage {
       branches.push({equivalentCount:Number.isInteger(r.equivalent_mutations?.equivalent_count)&&r.equivalent_mutations.equivalent_count>=0?r.equivalent_mutations.equivalent_count:undefined,id,parent:String(r.parent??''),marker:name.toUpperCase(),tentative,pending:!!r.isParent&&(!children||Number(r.low_count||0)>children)});
       continue;
     }
-    // stype=2 is the source's explicit Ancient category (verified against its
-    // user_anc/user_anc_csv renderer). AU is only an identifier, not a type.
-    if(r.stype!=null&&[0,1,3,4,5].includes(Number(r.stype))){excluded++;continue;}
+    // stype=2 selects Ancient; stype=1 selects Scientific, matching the site's
+    // user_anc/user_sci renderers. AU alone never establishes a category.
+    if(r.stype!=null&&[0,1,2,3,4,5].includes(Number(r.stype))&&Number(r.stype)!==STYPE){excluded++;continue;}
     if(!/^\d+$/.test(String(r.sid)))continue;
-    const ancient=Number(r.stype)===2;
-    const sample:AncientSample={au:`AU${r.sid}`,name:ancient?safeText(r.name):'',marker:safeText(r.haplogroup,100).toUpperCase(),parentId:String(r.parent??''),path:[],tentative:false,type:ancient?'ancient':'unknown',typeEvidence:ancient?'TheYtree公开树 stype=2':'类型尚未确认',url:sourceUrl(`/sample/${r.sid_encrypted}.html`),country:ancient?safeText(r.country,150):'',place:'',culture:'',period:ancient?safeText(r.period,250):'',coverage:ancient&&typeof r.coverage==='number'&&r.coverage>=0&&r.coverage<=1?r.coverage:null,depth:ancient&&typeof r.average_depth==='number'&&r.average_depth>=0?r.average_depth:null,paper:'',paperUrl:'',detail:false,issue:ancient?'':'待核对样本类型'};
+    const ancient=Number(r.stype)===STYPE;
+    const sample:AncientSample={au:`AU${r.sid}`,name:ancient?safeText(r.name):'',marker:safeText(r.haplogroup,100).toUpperCase(),parentId:String(r.parent??''),path:[],tentative:false,type:ancient?SAMPLE_KIND:'unknown',typeEvidence:ancient?`TheYtree公开树 stype=${STYPE}`:'类型尚未确认',url:sourceUrl(`/sample/${r.sid_encrypted}.html`),country:ancient?safeText(r.country,150):'',place:'',culture:'',period:ancient?safeText(r.period,250):'',coverage:ancient&&typeof r.coverage==='number'&&r.coverage>=0&&r.coverage<=1?r.coverage:null,depth:ancient&&typeof r.average_depth==='number'&&r.average_depth>=0?r.average_depth:null,paper:'',paperUrl:'',detail:false,issue:ancient?'':'待核对样本类型'};
     (ancient?samples:unclassified).push(sample);
   }
   return {branches,samples,unclassified,excluded,valid:true,reason:''};

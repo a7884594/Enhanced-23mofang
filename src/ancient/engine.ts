@@ -1,3 +1,5 @@
+import {SAMPLE_KIND} from './profile';
+import {profileText} from './profile';
 import {TY,TTL,marker,sourceUrl,queryUrl,nodeUrl,normalizeTree,selectSamples,pathToRoot,dedupe,fresh,type QueryResult,type TreePage,type AncientSample} from './model';
 import {parseDetail} from './parser';
 import {snps,checkSnp,snpUrl,mappingTarget} from './snps';
@@ -7,8 +9,8 @@ import {knownDirectCount,type BadgeCount} from './counts';
 import {resolveTarget} from './aliases';
 export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Promise<void>;request(url:string,signal:AbortSignal):Promise<{status:number;url:string;body:string}>;now():number;id():string}
 export class SyncRequired extends Error{}
-export const jobKey=(id:string)=>`anc.job.${id}`;
-export const cacheKey=(m:string,s:string)=>`anc.cache.fast4.${m}.${s}`;
+export const jobKey=(id:string)=>profileText(`anc.job.${id}`);
+export const cacheKey=(m:string,s:string)=>profileText(`anc.cache.fast4.${m}.${s}`);
 /** Per-worker global request queue: single concurrency and >=500ms between starts. */
 export class RequestGate {
   private tail:Promise<any>=Promise.resolve();private next=0;
@@ -27,7 +29,7 @@ export class RequestGate {
 export class AncientEngine {
   private active=new Map<string,AbortController>();
   constructor(private io:IO){}
-  async save(job:QueryResult,touch=true){if(touch)job.updatedAt=this.io.now();await this.io.set(jobKey(job.id),job);if(!job.complete&&job.status!=='unmatched')await this.io.set(`anc.pending.fast4.${job.marker}.${job.scope}`,job.id);}
+  async save(job:QueryResult,touch=true){if(touch)job.updatedAt=this.io.now();await this.io.set(jobKey(job.id),job);if(!job.complete&&job.status!=='unmatched')await this.io.set(profileText(`anc.pending.fast4.${job.marker}.${job.scope}`),job.id);}
   async get(id:string):Promise<QueryResult|null>{const j=await this.io.get(jobKey(id));if(j?.status==='running'&&!this.active.has(id)){j.status='paused';j.message='后台任务已暂停，可继续查询';await this.save(j);}return j||null;}
   private cacheTail:Promise<unknown>=Promise.resolve();
   private async putCache(j:QueryResult){
@@ -46,14 +48,14 @@ export class AncientEngine {
         j.cachedChildren=Math.max(0,count-1);j.projectedVersion=1;
       }
       await this.putCache(j);
-      await this.io.set('anc.cacheRevision',{at:j.updatedAt,id:j.id});
+      await this.io.set(profileText('anc.cacheRevision'),{at:j.updatedAt,id:j.id});
     });this.cacheTail=work;await work;
   }
   private async readCompatibleCache(name:string,scope:'direct'|'downstream'):Promise<QueryResult|null>{
     const current=await this.io.get(cacheKey(name,scope));if(current)return current;
     // v1.1.2 already required verified cross-site mapping. Keep its original
     // collection time; do not revive expired or unresolved earlier results.
-    const old=await this.io.get(`anc.cache.snp3.${name}.${scope}`);
+    const old=await this.io.get(profileText(`anc.cache.snp3.${name}.${scope}`));
     if(!old||old.marker!==name||old.scope!==scope||!fresh(old,this.io.now())||!Array.isArray(old.samples)||!Array.isArray(old.branches)||
       (old.target!==name&&(!old.mappingReady||!old.nodeSnps?.length||!old.snpChecks?.length)))return null;
     await this.putCache(old);return old;
@@ -88,7 +90,7 @@ export class AncientEngine {
   async getBadge(name:string):Promise<BadgeCount|null>{
     const cached=await this.getCached(name,'direct');let result=cached?knownDirectCount(cached,this.io.now()):null;
     for(const scope of ['direct','downstream']){
-      const id=await this.io.get(`anc.pending.fast4.${name}.${scope}`);const job=id?await this.io.get(jobKey(id)):null;
+      const id=await this.io.get(profileText(`anc.pending.fast4.${name}.${scope}`));const job=id?await this.io.get(jobKey(id)):null;
       if(!job||job.marker!==name||job.complete)continue;
       const partial=knownDirectCount(job,this.io.now());
       if(partial&&(!result||job.createdAt>result.updatedAt))result=partial;
@@ -100,7 +102,7 @@ export class AncientEngine {
     if(!refresh){const cached=await this.getCached(m,scope);if(cached&&fresh(cached,this.io.now())&&(values===undefined||JSON.stringify(cached.nodeSnps)===JSON.stringify(nodeSnps))){if(cached.scope==='downstream'&&cached.projectedVersion!==1)await this.cacheResult(cached);const copy={...cached,id:this.io.id(),cached:true};await this.io.set(jobKey(copy.id),copy);return copy;}}
     const resolved=resolveTarget(m);
     if(!refresh){
-      const pendingId=await this.io.get(`anc.pending.fast4.${m}.${scope}`);const pending=pendingId?await this.io.get(jobKey(pendingId)):null;
+      const pendingId=await this.io.get(profileText(`anc.pending.fast4.${m}.${scope}`));const pending=pendingId?await this.io.get(jobKey(pendingId)):null;
       if(pending&&!pending.complete&&pending.status!=='unmatched'&&(values===undefined||JSON.stringify(pending.nodeSnps)===JSON.stringify(nodeSnps))&&this.io.now()-pending.createdAt<TTL&&!this.active.has(pending.id)){
         // Give the reopened page its own task ID; a tab restored after browser
         // restart must not need the previous tab ID to find its checkpoint.
@@ -161,14 +163,14 @@ export class AncientEngine {
     const evidence=equivalentEvidence(c,groups,j.nodeSnps,this.io.now(),method);
     j.snpChecks=applyEquivalent(j.snpChecks||[],evidence);
     if(j.nodeSnps.every(s=>j.snpChecks!.some(v=>v.snp===s)))this.resolveMapping(j);
-    await this.io.set(`anc.equivalent3.${c.id}.${c.marker}`,evidence);await this.save(j);return j;
+    await this.io.set(profileText(`anc.equivalent3.${c.id}.${c.marker}`),evidence);await this.save(j);return j;
   }
   async sourceSnp(id:string,value:string,page:TreePage){
     const j:QueryResult=await this.io.get(jobKey(id));
     if(!j||j.status==='paused'||!j.nodeSnps?.includes(value)||j.mappingReady)throw Error('SNP同步任务已过期');
     j.snpChecks=[...(j.snpChecks||[]).filter(v=>v.snp!==value),checkSnp(page,value,j.nodeSnps)];
     if(j.nodeSnps.every(s=>j.snpChecks!.some(v=>v.snp===s)))this.resolveMapping(j);
-    j.message=j.mappingReady?'SNP对应已确认，正在读取古DNA':j.message;
+    j.message=j.mappingReady?profileText('SNP对应已确认，正在读取古DNA'):j.message;
     await this.save(j);return j;
   }
   async adopt(id:string,page:TreePage){
@@ -177,7 +179,7 @@ export class AncientEngine {
     // DOM and API node IDs must not be mixed. A normal page sync is a new tree
     // snapshot, while already fetched ancient detail fields remain cacheable.
     j.branches=[];j.checked=[];j.samples=[];j.unknown=[];j.failures=[];j.syncToken=this.io.id();
-    this.integrate(j,page);if(j.status!=='unmatched'){j.status='sync';j.message='已读取正常网页，正在补全古DNA详情';}
+    this.integrate(j,page);if(j.status!=='unmatched'){j.status='sync';j.message=profileText('已读取正常网页，正在补全古DNA详情');}
     await this.save(j);return j;
   }
   async sourceExpand(id:string,page:TreePage,node:string){const j=await this.io.get(jobKey(id));if(!j||j.status==='paused')return j;if(!j.queue.includes(node))throw Error('不是当前任务的待查节点');this.integrate(j,page,node);await this.save(j);return j;}
@@ -185,12 +187,12 @@ export class AncientEngine {
     const j:QueryResult=await this.io.get(jobKey(id));if(!j||j.status==='paused')return j;
     const s=[...j.samples,...j.unknown].find(s=>s.au===au);if(!s)throw Error('样本不在当前查询范围');
     if(detail.type==='modern'){j.samples=j.samples.filter(s=>s.au!==au);j.unknown=j.unknown.filter(s=>s.au!==au);j.excluded++;}
-    else if(detail.type==='ancient'&&detail.sample?.au===au){
+    else if(detail.type===SAMPLE_KIND&&detail.sample?.au===au){
       const mismatch=detail.sample.marker&&detail.sample.marker!==s.marker.replace(/\?$/,'');const oldPeriod=s.period;
       Object.assign(s,detail.sample,{path:s.path,parentId:s.parentId,tentative:s.tentative||!!mismatch});
       if(mismatch)s.issue='详情页与树挂载支系不一致，待核对';else if(oldPeriod&&s.period!==oldPeriod)s.issue=`树中年代原文：${oldPeriod}；详情页显示不同，保留对照`;
       if(s.tentative){j.samples=j.samples.filter(s=>s.au!==au);j.unknown=dedupe([...j.unknown,s]);}else {j.unknown=j.unknown.filter(s=>s.au!==au);j.samples=dedupe([...j.samples,s]);}
-      await this.io.set(`anc.detail.${au}`,{at:this.io.now(),url:s.url,value:detail});
+      await this.io.set(profileText(`anc.detail.${au}`),{at:this.io.now(),url:s.url,value:detail});
     }else j.failures.push({key:au,message:'源站详情未能确认样本类别或编号'});
     j.details=j.details.filter(s=>s!==au);j.message=`网页同步：剩余 ${j.details.length} 条详情`;await this.save(j);return j;
   }
@@ -209,7 +211,7 @@ export class AncientEngine {
       if(j.nodeSnps&&!j.mappingReady){
         for(const value of j.nodeSnps){
           if(j.snpChecks?.some(v=>v.snp===value))continue;
-          const key=`anc.snp3.${j.nodeSnps.join(',')}.${value}`;
+          const key=profileText(`anc.snp3.${j.nodeSnps.join(',')}.${value}`);
           const cached=await this.io.get(key);
           let check;
           if(!j.forceRefresh&&cached&&this.io.now()-cached.at<TTL)check=cached.check;
@@ -226,7 +228,7 @@ export class AncientEngine {
         }
         for(const check of j.snpChecks||[]){
           if(!check.issue||!check.candidate)continue;
-          const c=check.candidate;const e=await this.io.get(`anc.equivalent3.${c.id}.${c.marker}`);
+          const c=check.candidate;const e=await this.io.get(profileText(`anc.equivalent3.${c.id}.${c.marker}`));
           if(!j.forceRefresh&&e&&this.io.now()-e.capturedAt<TTL){
             try{j.snpChecks=applyEquivalent(j.snpChecks||[],equivalentEvidence(c,e.groups,j.nodeSnps!,e.capturedAt,e.method));}catch{/* stale count/format: normal page must refresh */}
           }
@@ -244,28 +246,28 @@ export class AncientEngine {
         if(attempted.has(key)){j.failures.push({key,message:'源站未能确认子树加载完整'});j.queue.shift();continue;}attempted.add(key);
         try{const page=normalizeTree(JSON.parse(await this.request(nodeUrl(key),c)));if(!page.valid)throw new SyncRequired(page.reason);this.integrate(j,page,key);}
         catch(e){if(e instanceof SyncRequired||c.signal.aborted)throw e;j.failures.push({key,message:String(e)});j.queue.shift();}
-        j.message=`已检查 ${j.checked.length} 个节点，发现 ${j.samples.length} 条古样本`;if(c.signal.aborted)return;await this.save(j);
+        j.message=profileText(`已检查 ${j.checked.length} 个节点，发现 ${j.samples.length} 条古样本`);if(c.signal.aborted)return;await this.save(j);
       }
       const pending=[...j.details];
       for(const au of pending){
         if(c.signal.aborted)return;const s=[...j.samples,...j.unknown].find(s=>s.au===au);if(!s)continue;
         if(!s.url){s.issue=s.issue||'缺少真实详情链接，请在TheYtree打开样本详情后同步';j.failures.push({key:au,message:s.issue});j.details=j.details.filter(a=>a!==au);continue;}
         try{
-          const key=`anc.detail.${au}`;const cached=await this.io.get(key);
+          const key=profileText(`anc.detail.${au}`);const cached=await this.io.get(key);
           const detail=!j.forceRefresh&&cached&&this.io.now()-cached.at<TTL&&cached.url===s.url?cached.value:parseDetail(await this.request(s.url,c),s.url);
           if(detail.type==='modern') {j.samples=j.samples.filter(x=>x.au!==au);j.unknown=j.unknown.filter(x=>x.au!==au);j.excluded++;}
-          else if(detail.type!=='ancient'||!detail.sample||detail.sample.au!==au){s.issue='详情页类型或编号尚未确认';j.failures.push({key:au,message:s.issue});}
+          else if(detail.type!==SAMPLE_KIND||!detail.sample||detail.sample.au!==au){s.issue='详情页类型或编号尚未确认';j.failures.push({key:au,message:s.issue});}
           else{
             const reported=detail.sample.marker;const mismatch=reported&&reported!==s.marker.replace(/\?$/,'');
             const oldPeriod=s.period;Object.assign(s,detail.sample,{parentId:s.parentId,path:s.path,tentative:s.tentative||!!mismatch});
             if(mismatch)s.issue='详情页与树挂载支系不一致，待核对';
             else if(oldPeriod&&s.period&&oldPeriod!==s.period)s.issue=`树中年代原文：${oldPeriod}；详情页显示不同，保留对照`;
             if(s.tentative){j.samples=j.samples.filter(x=>x.au!==au);j.unknown=dedupe([...j.unknown,s]);}
-            else if(s.type==='ancient'&&j.unknown.some(x=>x.au===au)){j.unknown=j.unknown.filter(x=>x.au!==au);j.samples=dedupe([...j.samples,s]);}
+            else if(s.type===SAMPLE_KIND&&j.unknown.some(x=>x.au===au)){j.unknown=j.unknown.filter(x=>x.au!==au);j.samples=dedupe([...j.samples,s]);}
             await this.io.set(key,{at:this.io.now(),url:s.url,value:detail});
           }
         }catch(e){if(e instanceof SyncRequired||c.signal.aborted)throw e;s.issue=String(e);j.failures.push({key:au,message:s.issue});}
-        j.details=j.details.filter(x=>x!==au);j.message=`已确认 ${j.samples.length} 条古样本，剩余 ${j.details.length} 条详情`;if(c.signal.aborted)return;await this.save(j);
+        j.details=j.details.filter(x=>x!==au);j.message=profileText(`已确认 ${j.samples.length} 条古样本，剩余 ${j.details.length} 条详情`);if(c.signal.aborted)return;await this.save(j);
       }
       j.complete=!j.queue.length&&!j.details.length&&!j.failures.length&&!j.unknown.length;
       j.status=j.complete?'complete':'partial';j.message=j.complete?'查询完成（按源站可加载范围）':`已发现 ${j.samples.length} 条，结果尚不完整或有待核对记录`;

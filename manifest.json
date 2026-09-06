@@ -1,18 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "23魔方 · 地域地图与古DNA",
-  "version": "1.1.8",
-  "description": "全国区县/市级频率地图，节点古DNA查询、TheYtree来源核对与本地缓存。",
+  "name": "23魔方 · 地域地图与样本查询",
+  "version": "1.2.0",
+  "description": "全国区县/市级频率地图，古DNA与科研样本独立查询、TheYtree来源核对及本地缓存。",
   "permissions": ["storage"],
   "host_permissions": ["https://www.theytree.com/*"],
   "background": {"service_worker":"ancient/background.js"},
   "minimum_chrome_version": "111",
   "icons": {"48":"icons/48.png","128":"icons/128.png"},
   "content_scripts": [
-    {"matches":["https://www.23mofang.com/*"],"js":["bridge.js","ancient/mofang-bridge.js"],"run_at":"document_start","world":"MAIN"},
-    {"matches":["https://www.23mofang.com/*"],"js":["content.js","ancient/ui.js"],"run_at":"document_start"},
-    {"matches":["https://www.theytree.com/tree/*"],"js":["ancient/source-bridge.js"],"run_at":"document_start","world":"MAIN"},
-    {"matches":["https://www.theytree.com/tree/*"],"js":["ancient/source.js"],"run_at":"document_idle"}
+    {"matches":["https://www.23mofang.com/*"],"js":["bridge.js","ancient/mofang-bridge.js","research/mofang-bridge.js"],"run_at":"document_start","world":"MAIN"},
+    {"matches":["https://www.23mofang.com/*"],"js":["content.js","ancient/ui.js","research/ui.js"],"run_at":"document_start"},
+    {"matches":["https://www.theytree.com/tree/*"],"js":["ancient/source-bridge.js","research/source-bridge.js"],"run_at":"document_start","world":"MAIN"},
+    {"matches":["https://www.theytree.com/tree/*"],"js":["ancient/source.js","research/source.js"],"run_at":"document_idle"}
   ],
   "web_accessible_resources": [{"resources":["assets/counties.geo.json","assets/cities.geo.json"],"matches":["https://www.23mofang.com/*"]}]
 }

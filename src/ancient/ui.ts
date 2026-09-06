@@ -1,3 +1,4 @@
+import {profileText,RESEARCH} from './profile';
 import {formationAge,showAncientEntry,analysisAge} from './age';
 import {knownDirectCount,type BadgeCount} from './counts';
 import {paintAncientBadge,paintAnalysisEntry} from './badge';
@@ -18,31 +19,32 @@ async function readSnps(name:string):Promise<string[]>{
 }
 export function formalNodes(doc:Document):{node:SVGGElement;name:string}[]{return [...doc.querySelectorAll<SVGGElement>('.tree-wrapper g.node')].flatMap(node=>{if(node.querySelector(':scope > .person-container'))return [];const name=marker(node.querySelector(':scope > text.label')?.textContent);return name&&showAncientEntry(formationAge(node.querySelector(':scope > .time')?.textContent))?[{node,name}]:[];});}
 export function bootAncientUI(){
-  if(document.getElementById('mofang-ancient-panel'))return;
-  const host=document.createElement('div');host.id='mofang-ancient-panel';const shadow=host.attachShadow({mode:'open'});
-  shadow.innerHTML=`<style>${STYLE}</style><aside class="panel" role="dialog" aria-label="古DNA查询" hidden><header class="head"><div class="top"><span class="tag">THEYTREE · ANCIENT DNA</span><button class="close">关闭</button></div><div class="title">古DNA</div><div class="mapping">来源：TheYtree</div><div class="tabs" role="tablist"><button data-scope="direct" role="tab">本节点</button><button data-scope="downstream" role="tab">包含下游</button></div></header><div class="filters"><input aria-label="搜索古DNA" placeholder="搜索编号、遗址、文化"><select aria-label="地区筛选"><option value="">全部地区</option></select><select aria-label="年代排序"><option value="source">源站顺序</option><option value="cal BP">cal BP：由早到晚</option><option value="BP">BP：由早到晚</option></select></div><div class="actions"><button class="refresh">刷新</button><button class="pause">暂停</button><button class="resume">继续查询</button><button class="sync">打开TheYtree同步</button></div><div class="body"><div class="empty">点击节点查询古DNA</div><div class="records"></div><details class="unknown"><summary></summary><div class="pending"></div></details><details class="snp-evidence"><summary>节点SNP对应依据</summary><div></div></details><details class="failures"><summary>查询问题</summary><div></div></details></div><footer class="foot"><div class="progress"></div><div class="time"></div><div class="caution">本节点指源站直接挂载，并非已排除所有下游。古样本不代表你的直接祖先；不同年代口径不混排。</div></footer></aside>`;
+  if(document.getElementById(profileText('mofang-ancient-panel')))return;
+  const host=document.createElement('div');host.id=profileText('mofang-ancient-panel');const shadow=host.attachShadow({mode:'open'});
+  shadow.innerHTML=profileText(`<style>${STYLE}</style><aside class="panel" role="dialog" aria-label="古DNA查询" hidden><header class="head"><div class="top"><span class="tag">THEYTREE · ANCIENT DNA</span><button class="close">关闭</button></div><div class="title">古DNA</div><div class="mapping">来源：TheYtree</div><div class="tabs" role="tablist"><button data-scope="direct" role="tab">本节点</button><button data-scope="downstream" role="tab">包含下游</button></div></header><div class="filters"><input aria-label="搜索古DNA" placeholder="搜索编号、遗址、文化"><select aria-label="地区筛选"><option value="">全部地区</option></select><select aria-label="年代排序"><option value="source">源站顺序</option><option value="cal BP">cal BP：由早到晚</option><option value="BP">BP：由早到晚</option></select></div><div class="actions"><button class="refresh">刷新</button><button class="pause">暂停</button><button class="resume">继续查询</button><button class="sync">打开TheYtree同步</button></div><div class="body"><div class="empty">点击节点查询古DNA</div><div class="records"></div><details class="unknown"><summary></summary><div class="pending"></div></details><details class="snp-evidence"><summary>节点SNP对应依据</summary><div></div></details><details class="failures"><summary>查询问题</summary><div></div></details></div><footer class="foot"><div class="progress"></div><div class="time"></div><div class="caution">本节点指源站直接挂载，并非已排除所有下游。古样本不代表你的直接祖先；不同年代口径不混排。</div></footer></aside>`);
   document.body.append(host);
   const q=<T extends HTMLElement=HTMLElement>(s:string)=>shadow.querySelector<T>(s)!;
   const responsive=document.createElement('style');responsive.textContent=RESPONSIVE;shadow.append(responsive);
-  const note=q('.caution');const noteText=note.textContent;const notes=document.createElement('details');notes.className='caution';const noteTitle=document.createElement('summary');noteTitle.textContent='口径说明';const noteBody=document.createElement('p');noteBody.textContent=noteText;notes.append(noteTitle,noteBody);note.replaceWith(notes);
+  const note=q('.caution');const noteText=RESEARCH?'只收录TheYtree明确标记为科研的样本，个人与古人样本排除。挂载和下游范围以TheYtree为准。':note.textContent;const notes=document.createElement('details');notes.className='caution';const noteTitle=document.createElement('summary');noteTitle.textContent='口径说明';const noteBody=document.createElement('p');noteBody.textContent=noteText;notes.append(noteTitle,noteBody);note.replaceWith(notes);
+  if(RESEARCH){q<HTMLSelectElement>('select[aria-label="年代排序"]').hidden=true;q<HTMLInputElement>('input').placeholder='搜索编号、名称、来源';}
   let selected='';let scope:Scope='direct';let job:QueryResult|null=null;let serial=0;let busy=false;let lastState='';let priorFocus:Element|null=null;const counts=new Map<string,BadgeCount>();
   const set=(selector:string,value:string)=>{q(selector).textContent=value;};
   function link(parent:Element,label:string,url:string){const a=document.createElement('a');a.textContent=label;a.href=url;a.target='_blank';a.rel='noopener noreferrer';parent.append(a);}
   function card(s:AncientSample,pending=false){const e=document.createElement('article');e.className='card';
-    const au=document.createElement('div');au.className='au';au.textContent=`${s.au} · ${pending?'待核对':'已确认古人'}`;
+    const au=document.createElement('div');au.className='au';au.textContent=`${s.au} · ${pending?'待核对':profileText('已确认古人')}`;
     const name=document.createElement('div');name.className='name';name.textContent=s.name||'类型未确认的候选样本';
-    const meta=document.createElement('div');meta.className='meta';meta.textContent=[s.place||s.country||'地点未提供',s.culture&&`文化：${s.culture}`,`年代：${s.period||'未提供'}`,`覆盖率：${s.coverage==null?'未提供':(s.coverage*100).toFixed(2)+'%'} · 平均深度：${s.depth??'未提供'}`,s.paper&&`来源：${s.paper}`].filter(Boolean).join('\n');
+    const meta=document.createElement('div');meta.className='meta';meta.textContent=[s.place||s.country||'地点未提供',!RESEARCH&&s.culture&&`文化：${s.culture}`,!RESEARCH&&`年代：${s.period||'未提供'}`,`覆盖率：${s.coverage==null?'未提供':(s.coverage*100).toFixed(2)+'%'} · 平均深度：${s.depth??'未提供'}`,s.paper&&`来源：${s.paper}`].filter(Boolean).join('\n');
     const path=document.createElement('div');path.className='path';path.textContent=`${s.path.length<=1?'本节点':'下游'} · ${s.path.join(' → ')||s.marker} · ${s.typeEvidence}`;
     e.append(au,name,meta,path);if(s.issue){const issue=document.createElement('div');issue.className='issue';issue.textContent=s.issue;e.append(issue);}
     const links=document.createElement('div');links.className='links';if(sourceUrl(s.url))link(links,'样本原页',s.url);if(paperUrl(s.paperUrl))link(links,'来源论文',s.paperUrl);e.append(links);return e;
   }
   function renderRows(){if(!job)return;const needle=q<HTMLInputElement>('input').value.trim().toLowerCase();const region=q<HTMLSelectElement>('select[aria-label="地区筛选"]').value;const order=q<HTMLSelectElement>('select[aria-label="年代排序"]').value;
-    const filter=(s:AncientSample)=>(!region||s.country===region)&&(!needle||[s.au,s.name,s.place,s.culture,s.period,s.marker].join(' ').toLowerCase().includes(needle));
+    const filter=(s:AncientSample)=>(!region||s.country===region)&&(!needle||[s.au,s.name,s.place,s.culture,s.period,s.marker,s.paper].join(' ').toLowerCase().includes(needle));
     const rows=job.samples.filter(filter).slice();if(order!=='source')rows.sort((a,b)=>{const x=dated(a.period),y=dated(b.period);return (y?.basis===order?y.midpoint:-Infinity)-(x?.basis===order?x.midpoint:-Infinity)||0;});
     q('.records').replaceChildren(...rows.map(s=>card(s)));const pending=job.unknown.filter(filter);q('.pending').replaceChildren(...pending.map(s=>card(s,true)));q('.unknown').hidden=!pending.length;set('.unknown summary',`待核对 ${pending.length} 条（不计入已确认数量）`);
-    q('.empty').hidden=!!rows.length||!!pending.length;q('.empty').textContent=job.complete?'当前条件下没有古样本':job.message;
+    q('.empty').hidden=!!rows.length||!!pending.length;q('.empty').textContent=job.complete?profileText('当前条件下没有古样本'):job.message;
   }
-  function update(j:QueryResult){if(j.status==='unmatched'&&!j.nodeSnps){void query(!!j.forceRefresh,true);return;}job=j;set('.title',`${selected} · 古DNA`);set('.mapping',`来源：TheYtree · ${j.mapping}`);
+  function update(j:QueryResult){if(j.status==='unmatched'&&!j.nodeSnps){void query(!!j.forceRefresh,true);return;}job=j;set('.title',profileText(`${selected} · 古DNA`));set('.mapping',`来源：TheYtree · ${j.mapping}`);
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
     q('.pause').hidden=!['running','sync'].includes(j.status);q('.resume').hidden=!['paused','partial','error'].includes(j.status);q('.sync').hidden=j.complete||j.status==='running';
     const regions=q<HTMLSelectElement>('select[aria-label="地区筛选"]');const previous=regions.value;regions.replaceChildren(new Option('全部地区',''),...[...new Set([...j.samples,...j.unknown].map(s=>s.country).filter(Boolean))].sort().map(r=>new Option(r,r)));regions.value=previous;
@@ -59,62 +61,63 @@ export function bootAncientUI(){
     if(j.status==='unmatched'){const row=document.createElement('p');link(row,'到TheYtree搜索支系',`${TY}/`);failures.append(row);q('.failures').hidden=false;}
     if(j.complete)invalidateCounts();const count=knownDirectCount(j);if(count)counts.set(j.marker,count);updateBadges();renderRows();
   }
-  async function query(refresh=false,useSnps=false){const token=++serial;busy=true;job=null;set('.title',`${selected} · 古DNA`);set('.progress','正在查询…');q('.records').replaceChildren();q('.pending').replaceChildren();q('.unknown').hidden=true;q('.failures').hidden=true;q('.empty').hidden=false;set('.empty','正在读取TheYtree公开古DNA信息…');
+  async function query(refresh=false,useSnps=false){const token=++serial;busy=true;job=null;set('.title',profileText(`${selected} · 古DNA`));set('.progress','正在查询…');q('.records').replaceChildren();q('.pending').replaceChildren();q('.unknown').hidden=true;q('.failures').hidden=true;q('.empty').hidden=false;set('.empty',profileText('正在读取TheYtree公开古DNA信息…'));
     set('.time','');set('.mapping','来源：TheYtree');q('.snp-evidence > div').replaceChildren();q('.snp-evidence').hidden=true;
     q('.resume').hidden=true;q('.sync').hidden=true;q('.pause').hidden=true;
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
-    try{const name=selected,range=scope;const values=useSnps?await readSnps(name):undefined;if(token!==serial)return;const j=await api({type:'anc.start',marker:name,scope:range,refresh,snps:values});if(token===serial)update(j);else void api({type:'anc.cancel',id:j.id}).catch(()=>{});}catch(e){if(token===serial){set('.empty',String(e));set('.progress','查询失败，不代表没有古样本');}}finally{if(token===serial)busy=false;}
+    try{const name=selected,range=scope;const values=useSnps?await readSnps(name):undefined;if(token!==serial)return;const j=await api({type:profileText('anc.start'),marker:name,scope:range,refresh,snps:values});if(token===serial)update(j);else void api({type:profileText('anc.cancel'),id:j.id}).catch(()=>{});}catch(e){if(token===serial){set('.empty',String(e));set('.progress',profileText('查询失败，不代表没有古样本'));}}finally{if(token===serial)busy=false;}
   }
-  function open(name:string){const m=marker(name);if(!m)return;priorFocus=document.activeElement;selected=m;scope='direct';q('.panel').hidden=false;q<HTMLInputElement>('input').value='';void query();q('.close').focus();}
-  function close(){q('.panel').hidden=true;serial++;if(job&&['running','sync'].includes(job.status))void api({type:'anc.cancel',id:job.id}).catch(()=>{});if(priorFocus instanceof HTMLElement||priorFocus instanceof SVGElement)(priorFocus as HTMLElement).focus?.();}
+  function open(name:string){const m=marker(name);if(!m)return;document.dispatchEvent(new CustomEvent('mofang-sample-panel-open',{detail:RESEARCH?'research':'ancient'}));priorFocus=document.activeElement;selected=m;scope='direct';q('.panel').hidden=false;q<HTMLInputElement>('input').value='';void query();q('.close').focus();}
+  function close(){q('.panel').hidden=true;serial++;if(job&&['running','sync'].includes(job.status))void api({type:profileText('anc.cancel'),id:job.id}).catch(()=>{});if(priorFocus instanceof HTMLElement||priorFocus instanceof SVGElement)(priorFocus as HTMLElement).focus?.();}
+  document.addEventListener('mofang-sample-panel-open',event=>{if((event as CustomEvent).detail!==(RESEARCH?'research':'ancient')&&!q('.panel').hidden)close();});
   q('.close').onclick=close;document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!q('.panel').hidden)close();});
   for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.onclick=()=>{scope=b.dataset.scope as Scope;void query();};
   q('.refresh').onclick=()=>void query(true);
-  for(const [selector,type]of [['.pause','anc.cancel'],['.resume','anc.resume'],['.sync','anc.sync']])q(selector).onclick=async()=>{if(!job)return;const id=job.id,token=serial;try{const r=await api({type,id});if(token!==serial||job?.id!==id)return;if(r?.id)update(r);else set('.progress','已打开TheYtree，请在正常网页完成同步后回到这里');}catch(e){if(token===serial)set('.progress',String(e));}};
+  for(const [selector,type]of [['.pause',profileText('anc.cancel')],['.resume',profileText('anc.resume')],['.sync',profileText('anc.sync')]])q(selector).onclick=async()=>{if(!job)return;const id=job.id,token=serial;try{const r=await api({type,id});if(token!==serial||job?.id!==id)return;if(r?.id)update(r);else set('.progress','已打开TheYtree，请在正常网页完成同步后回到这里');}catch(e){if(token===serial)set('.progress',String(e));}};
   q('input').oninput=renderRows;for(const s of shadow.querySelectorAll('select'))s.onchange=renderRows;
   const svgNS='http://www.w3.org/2000/svg';let lastCountRequest='';let countGeneration=0;
   function invalidateCounts(){lastCountRequest='';countGeneration++;}
-  chrome.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes['anc.cacheRevision'])invalidateCounts();});
-  function updateBadges(){for(const e of document.querySelectorAll<SVGGElement>('[data-mofang-ancient]'))paintAncientBadge(e,counts.get(e.dataset.marker||'')?.count,counts.get(e.dataset.marker||'')?.complete);const entry=document.querySelector<HTMLButtonElement>('#mofang-ancient-entry');if(entry)paintAnalysisEntry(entry,counts.get(entry.dataset.marker||'')?.count,counts.get(entry.dataset.marker||'')?.complete);}
+  chrome.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&changes[profileText('anc.cacheRevision')])invalidateCounts();});
+  function updateBadges(){for(const e of document.querySelectorAll<SVGGElement>(profileText('[data-mofang-ancient]')))paintAncientBadge(e,counts.get(e.dataset.marker||'')?.count,counts.get(e.dataset.marker||'')?.complete);const entry=document.querySelector<HTMLButtonElement>(profileText('#mofang-ancient-entry'));if(entry)paintAnalysisEntry(entry,counts.get(entry.dataset.marker||'')?.count,counts.get(entry.dataset.marker||'')?.complete);}
   function scan(){
-    const route=treeMarker(location.pathname);if(!route){document.querySelectorAll('[data-mofang-ancient],#mofang-ancient-entry').forEach(e=>e.remove());if(!q('.panel').hidden)close();return;}
+    const route=treeMarker(location.pathname);if(!route){document.querySelectorAll(profileText('[data-mofang-ancient],#mofang-ancient-entry')).forEach(e=>e.remove());if(!q('.panel').hidden)close();return;}
     const eligible=formalNodes(document);const eligibleNodes=new Set(eligible.map(n=>n.node));
-    for(const b of document.querySelectorAll('[data-mofang-ancient]'))if(!eligibleNodes.has(b.parentElement as unknown as SVGGElement))b.remove();
+    for(const b of document.querySelectorAll(profileText('[data-mofang-ancient]')))if(!eligibleNodes.has(b.parentElement as unknown as SVGGElement))b.remove();
     const branchPage=location.pathname.includes('/branch');const youngBranch=branchPage&&!showAncientEntry(analysisAge(document));
-    if(!branchPage||youngBranch)document.getElementById('mofang-ancient-entry')?.remove();
+    if(!branchPage||youngBranch)document.getElementById(profileText('mofang-ancient-entry'))?.remove();
     const selectedYoung=!q('.panel').hidden&&(branchPage?youngBranch:[...document.querySelectorAll('.tree-wrapper g.node')].some(n=>marker(n.querySelector(':scope > text.label')?.textContent)===selected&&!showAncientEntry(formationAge(n.querySelector(':scope > .time')?.textContent))));
     if(selectedYoung&&!q('.panel').hidden)close();
     const nodes=eligible.filter(({node})=>{const b=node.getBoundingClientRect();return b.bottom>=0&&b.top<=innerHeight;});
     for(const {node,name}of nodes){
-      let button=node.querySelector<SVGGElement>(':scope > [data-mofang-ancient]');
-      if(!button){button=document.createElementNS(svgNS,'g');button.dataset.mofangAncient='1';button.dataset.marker=name;button.setAttribute('role','button');button.setAttribute('tabindex','0');button.setAttribute('aria-label',`${name} 古DNA`);button.style.cursor='pointer';
+      let button=node.querySelector<SVGGElement>(profileText(':scope > [data-mofang-ancient]'));
+      if(!button){button=document.createElementNS(svgNS,'g');button.setAttribute(profileText('data-mofang-ancient'),'1');button.dataset.marker=name;button.setAttribute('role','button');button.setAttribute('tabindex','0');button.setAttribute('aria-label',profileText(`${name} 古DNA`));button.style.cursor='pointer';
         const rect=document.createElementNS(svgNS,'rect');for(const[k,v]of Object.entries({width:'20',height:'20',rx:'4',fill:'#f5f3ee',stroke:'#ded7ca'}))rect.setAttribute(k,v);
-        const text=document.createElementNS(svgNS,'text');for(const[k,v]of Object.entries({x:'7',y:'16',fill:'#866134','font-size':'11','font-family':'sans-serif'}))text.setAttribute(k,v);text.textContent='古DNA';button.append(rect,text);node.append(button);
+        const text=document.createElementNS(svgNS,'text');for(const[k,v]of Object.entries({x:'7',y:'16',fill:'#866134','font-size':'11','font-family':'sans-serif'}))text.setAttribute(k,v);text.textContent=profileText('古DNA');button.append(rect,text);node.append(button);
         button.onclick=e=>{e.stopPropagation();open(button!.dataset.marker!);};button.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();open(button!.dataset.marker!);}};
       }
       button.dataset.marker=name;
-      button.setAttribute('aria-label',`${name} 古DNA`);
+      button.setAttribute('aria-label',profileText(`${name} 古DNA`));
       paintAncientBadge(button,counts.get(name)?.count,counts.get(name)?.complete);
       if(button.getAttribute('aria-hidden')==='true')continue;
       const matrix=node.getScreenCTM();if(!matrix?.a)continue;
-      const snp=node.querySelector<SVGGElement>(':scope > .snp-wrapper');const bounds=snp?.getBoundingClientRect();
-      const right=bounds?.width?bounds.right:Math.max(...[...node.children].filter(e=>e!==button).map(e=>e.getBoundingClientRect().right));
+      const snp=node.querySelector<SVGGElement>(':scope > .snp-wrapper');const ancient=RESEARCH?node.querySelector<SVGGElement>(':scope > [data-mofang-ancient]'):null;const adjacent=ancient?.getBoundingClientRect();const bounds=adjacent?.width?adjacent:snp?.getBoundingClientRect();
+      const right=bounds?.width?bounds.right:Math.max(...[...node.children].filter(e=>e!==button&&!e.hasAttribute('data-mofang-ancient')&&!e.hasAttribute('data-mofang-research')).map(e=>e.getBoundingClientRect().right));
       const height=Number(button.querySelector('rect')?.getAttribute('height')||20);
       const y=bounds?.height&&matrix.d?(bounds.top+bounds.height/2-matrix.f)/matrix.d-height/2:3;
       const x=(right-matrix.e)/matrix.a+3;const transform=`translate(${x},${y})`;if(button.getAttribute('transform')!==transform)button.setAttribute('transform',transform);
     }
     if(!nodes.length&&branchPage&&!youngBranch){
-      const heading=document.querySelector('h1');if(heading&&!document.getElementById('mofang-ancient-entry')){const b=document.createElement('button');b.id='mofang-ancient-entry';b.dataset.marker=route;paintAnalysisEntry(b,counts.get(route)?.count,counts.get(route)?.complete);b.onclick=()=>{const m=treeMarker(location.pathname);if(m)open(m);};heading.after(b);}
+      const heading=document.querySelector('h1');if(heading&&!document.getElementById(profileText('mofang-ancient-entry'))){const b=document.createElement('button');b.id=profileText('mofang-ancient-entry');b.dataset.marker=route;paintAnalysisEntry(b,counts.get(route)?.count,counts.get(route)?.complete);b.onclick=()=>{const m=treeMarker(location.pathname);if(m)open(m);};heading.after(b);}
     }
-    const entry=document.querySelector<HTMLButtonElement>('#mofang-ancient-entry');if(entry)entry.dataset.marker=route;
-    const names=[...new Set([...nodes.map(n=>n.name),...(entry?[route]:[])])].slice(0,600);const key=names.join('|');if(key&&key!==lastCountRequest){lastCountRequest=key;const generation=++countGeneration;void api({type:'anc.counts',markers:names}).then(result=>{if(generation!==countGeneration)return;for(const name of names)counts.delete(name);for(const [m,v]of Object.entries<any>(result))counts.set(m,{count:v.count,complete:v.complete!==false,updatedAt:v.updatedAt||Date.now()});updateBadges();}).catch(()=>{if(generation===countGeneration)lastCountRequest='';});}updateBadges();
+    const entry=document.querySelector<HTMLButtonElement>(profileText('#mofang-ancient-entry'));if(entry)entry.dataset.marker=route;
+    const names=[...new Set([...nodes.map(n=>n.name),...(entry?[route]:[])])].slice(0,600);const key=names.join('|');if(key&&key!==lastCountRequest){lastCountRequest=key;const generation=++countGeneration;void api({type:profileText('anc.counts'),markers:names}).then(result=>{if(generation!==countGeneration)return;for(const name of names)counts.delete(name);for(const [m,v]of Object.entries<any>(result))counts.set(m,{count:v.count,complete:v.complete!==false,updatedAt:v.updatedAt||Date.now()});updateBadges();}).catch(()=>{if(generation===countGeneration)lastCountRequest='';});}updateBadges();
   }
   let priorRoute=location.pathname;
   setInterval(()=>{
     if(document.hidden)return;
     if(location.pathname!==priorRoute){priorRoute=location.pathname;if(!q('.panel').hidden)close();}
     scan();
-    if(job&&!q('.panel').hidden&&!busy){const id=job.id;const token=serial;busy=true;void api({type:'anc.get',id}).then(j=>{if(token===serial&&j?.id===id){const key=JSON.stringify(j);if(key!==lastState){lastState=key;update(j);}}}).catch(e=>{if(token===serial)set('.progress',String(e));}).finally(()=>{if(token===serial)busy=false;});}
+    if(job&&!q('.panel').hidden&&!busy){const id=job.id;const token=serial;busy=true;void api({type:profileText('anc.get'),id}).then(j=>{if(token===serial&&j?.id===id){const key=JSON.stringify(j);if(key!==lastState){lastState=key;update(j);}}}).catch(e=>{if(token===serial)set('.progress',String(e));}).finally(()=>{if(token===serial)busy=false;});}
   },700);
   scan();
 }
