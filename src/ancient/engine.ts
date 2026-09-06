@@ -6,7 +6,7 @@ import {resolveTarget} from './aliases';
 export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Promise<void>;request(url:string,signal:AbortSignal):Promise<{status:number;url:string;body:string}>;now():number;id():string}
 export class SyncRequired extends Error{}
 export const jobKey=(id:string)=>`anc.job.${id}`;
-export const cacheKey=(m:string,s:string)=>`anc.cache.snp3.${m}.${s}`;
+export const cacheKey=(m:string,s:string)=>`anc.cache.fast4.${m}.${s}`;
 /** Per-worker global request queue: single concurrency and >=500ms between starts. */
 export class RequestGate {
   private tail:Promise<any>=Promise.resolve();private next=0;
@@ -25,15 +25,15 @@ export class RequestGate {
 export class AncientEngine {
   private active=new Map<string,AbortController>();
   constructor(private io:IO){}
-  async save(job:QueryResult){job.updatedAt=this.io.now();await this.io.set(jobKey(job.id),job);if(!job.complete&&job.status!=='unmatched')await this.io.set(`anc.pending.snp3.${job.marker}.${job.scope}`,job.id);}
+  async save(job:QueryResult){job.updatedAt=this.io.now();await this.io.set(jobKey(job.id),job);if(!job.complete&&job.status!=='unmatched')await this.io.set(`anc.pending.fast4.${job.marker}.${job.scope}`,job.id);}
   async get(id:string):Promise<QueryResult|null>{const j=await this.io.get(jobKey(id));if(j?.status==='running'&&!this.active.has(id)){j.status='paused';j.message='后台任务已暂停，可继续查询';await this.save(j);}return j||null;}
   async start(name:string,scope:'direct'|'downstream',refresh=false,values?:unknown):Promise<QueryResult>{
     const m=marker(name);if(!m)throw Error('无效支系标记');const nodeSnps=values===undefined?undefined:snps(values);if(nodeSnps&&!nodeSnps.length)throw Error('尚未读取到节点SNP列表，请等待树加载后重试');
-    if(!refresh){const cached=await this.io.get(cacheKey(m,scope));if(cached&&fresh(cached,this.io.now())&&JSON.stringify(cached.nodeSnps)===JSON.stringify(nodeSnps)){const copy={...cached,id:this.io.id(),cached:true};await this.io.set(jobKey(copy.id),copy);return copy;}}
+    if(!refresh){const cached=await this.io.get(cacheKey(m,scope));if(cached&&fresh(cached,this.io.now())&&(values===undefined||JSON.stringify(cached.nodeSnps)===JSON.stringify(nodeSnps))){const copy={...cached,id:this.io.id(),cached:true};await this.io.set(jobKey(copy.id),copy);return copy;}}
     const resolved=resolveTarget(m);
     if(!refresh){
-      const pendingId=await this.io.get(`anc.pending.snp3.${m}.${scope}`);const pending=pendingId?await this.io.get(jobKey(pendingId)):null;
-      if(pending&&!pending.complete&&pending.status!=='unmatched'&&JSON.stringify(pending.nodeSnps)===JSON.stringify(nodeSnps)&&this.io.now()-pending.createdAt<TTL&&!this.active.has(pending.id)){
+      const pendingId=await this.io.get(`anc.pending.fast4.${m}.${scope}`);const pending=pendingId?await this.io.get(jobKey(pendingId)):null;
+      if(pending&&!pending.complete&&pending.status!=='unmatched'&&(values===undefined||JSON.stringify(pending.nodeSnps)===JSON.stringify(nodeSnps))&&this.io.now()-pending.createdAt<TTL&&!this.active.has(pending.id)){
         // Give the reopened page its own task ID; a tab restored after browser
         // restart must not need the previous tab ID to find its checkpoint.
         const recovered:QueryResult={...pending,id:this.io.id(),status:'paused',syncToken:'',cached:false,message:'找到未完成的查询，点击“继续查询”恢复，或打开TheYtree同步'};await this.save(recovered);return recovered;
@@ -75,6 +75,11 @@ export class AncientEngine {
   async beginSource(id:string){
     await this.pause(id);const j:QueryResult=await this.io.get(jobKey(id));if(!j)throw Error('任务不存在');
     j.mappingToken=this.io.id();j.syncToken='';j.status='sync';j.complete=false;j.message='正在通过正常网页同步';await this.save(j);return j;
+  }
+  async sourceUnmatched(id:string,token:string){
+    const j:QueryResult=await this.io.get(jobKey(id));
+    if(!j||j.status==='paused'||!token||j.mappingToken!==token||j.nodeSnps)throw Error('同名查询已过期');
+    j.status='unmatched';j.complete=false;j.message='源站没有同名节点，回到23魔方后自动核对SNP';j.mappingToken='';await this.save(j);return j;
   }
   async sourceProblem(id:string,message:string,token:string){
     const j:QueryResult=await this.io.get(jobKey(id));if(!j||!token||j.mappingToken!==token||j.status==='paused')throw Error('同步已过期');

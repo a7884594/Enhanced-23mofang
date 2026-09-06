@@ -1,3 +1,4 @@
+import {formationAge,showAncientEntry,analysisAge} from './age';
 import {snps} from './snps';
 import {A_CHANNEL,marker,treeMarker,treeUrl,TY,dated,sourceUrl,paperUrl,type Scope,type QueryResult,type AncientSample} from './model';
 const STYLE=`:host{font:13px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#3e362a;color-scheme:light}*{box-sizing:border-box}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #a9854b;outline-offset:2px}.panel{position:fixed;right:18px;top:64px;bottom:18px;width:440px;max-width:calc(100vw - 24px);z-index:2147483600;background:#fffdf9;border:1px solid #e0d5c4;border-radius:16px;box-shadow:0 12px 50px #3b2b2333;display:flex;flex-direction:column;overflow:hidden}.head{background:linear-gradient(110deg,#f6eedf,#fbf7ef);padding:20px 20px 14px}.top{display:flex;align-items:center;justify-content:space-between}.tag{font-size:10px;letter-spacing:2px;color:#997448;font-weight:700}.title{font-size:21px;font-weight:650;margin:5px 0}.close{border:0;background:transparent;font-size:13px;color:#796b57;padding:5px}.mapping{font-size:11px;color:#867764}.tabs{display:flex;gap:6px;margin-top:14px}.tabs button,.actions button{border:1px solid #d8c9af;background:white;border-radius:7px;padding:6px 12px;color:#725937}.tabs button[aria-selected=true]{background:#795c34;color:white}.filters{padding:12px 18px;border-bottom:1px solid #eee6d8;display:flex;flex-wrap:wrap;gap:8px}.filters input{width:100%;padding:8px 10px;background:white;border:1px solid #ddd4c5;border-radius:7px}.filters select{border:1px solid #ddd4c5;border-radius:6px;padding:5px;background:white;max-width:52%}.actions{padding:8px 18px;display:flex;gap:6px;flex-wrap:wrap}.body{flex:1;min-height:0;overflow:auto;padding:0 18px 16px}.empty{padding:25px 8px;color:#8d806f}.card{border:1px solid #e5dccd;background:white;border-radius:10px;padding:13px;margin:10px 0}.name{font-weight:650;color:#443624;font-size:13px;overflow-wrap:anywhere}.au{color:#9b733a;font-size:11px;margin-bottom:4px}.meta{color:#807361;font-size:12px;margin-top:7px;white-space:pre-line}.path{font-size:11px;background:#f7f3ec;color:#806646;border-radius:4px;padding:5px 7px;margin-top:8px;overflow-wrap:anywhere}.links{display:flex;gap:14px;margin-top:8px;font-size:12px}.links a{color:#3d728e}.issue{font-size:11px;color:#a56832;margin-top:6px}.foot{padding:12px 18px;border-top:1px solid #e6ddcd;background:#faf7f0;color:#887761;font-size:11px;white-space:pre-line}.progress{font-weight:600;color:#735634}.caution{font-size:11px;color:#9c8e7a;margin-top:8px}details summary{cursor:pointer;color:#946c3b;padding:10px 0}a{color:#426f85}button:disabled{opacity:.55;cursor:default}[hidden]{display:none!important}@media(max-width:700px){.panel{inset:0;width:100vw;max-width:none;border-radius:0}}`;
@@ -13,7 +14,7 @@ async function readSnps(name:string):Promise<string[]>{
     window.addEventListener('message',done);window.postMessage({channel:A_CHANNEL,type:'read-snps',marker:name,request},location.origin);
   });
 }
-export function formalNodes(doc:Document):{node:SVGGElement;name:string}[]{return [...doc.querySelectorAll<SVGGElement>('.tree-wrapper g.node')].flatMap(node=>{if(node.querySelector(':scope > .person-container'))return [];const name=marker(node.querySelector(':scope > text.label')?.textContent);return name?[{node,name}]:[];});}
+export function formalNodes(doc:Document):{node:SVGGElement;name:string}[]{return [...doc.querySelectorAll<SVGGElement>('.tree-wrapper g.node')].flatMap(node=>{if(node.querySelector(':scope > .person-container'))return [];const name=marker(node.querySelector(':scope > text.label')?.textContent);return name&&showAncientEntry(formationAge(node.querySelector(':scope > .time')?.textContent))?[{node,name}]:[];});}
 export function bootAncientUI(){
   if(document.getElementById('mofang-ancient-panel'))return;
   const host=document.createElement('div');host.id='mofang-ancient-panel';const shadow=host.attachShadow({mode:'open'});
@@ -39,12 +40,13 @@ export function bootAncientUI(){
     q('.records').replaceChildren(...rows.map(s=>card(s)));const pending=job.unknown.filter(filter);q('.pending').replaceChildren(...pending.map(s=>card(s,true)));q('.unknown').hidden=!pending.length;set('.unknown summary',`待核对 ${pending.length} 条（不计入已确认数量）`);
     q('.empty').hidden=!!rows.length||!!pending.length;q('.empty').textContent=job.complete?'当前条件下没有古样本':job.message;
   }
-  function update(j:QueryResult){job=j;set('.title',`${selected} · 古DNA`);set('.mapping',`来源：TheYtree · ${j.mapping}`);
+  function update(j:QueryResult){if(j.status==='unmatched'&&!j.nodeSnps){void query(!!j.forceRefresh,true);return;}job=j;set('.title',`${selected} · 古DNA`);set('.mapping',`来源：TheYtree · ${j.mapping}`);
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
     q('.pause').hidden=!['running','sync'].includes(j.status);q('.resume').hidden=!['paused','partial','error'].includes(j.status);q('.sync').hidden=j.complete||j.status==='running';
     const regions=q<HTMLSelectElement>('select[aria-label="地区筛选"]');const previous=regions.value;regions.replaceChildren(new Option('全部地区',''),...[...new Set([...j.samples,...j.unknown].map(s=>s.country).filter(Boolean))].sort().map(r=>new Option(r,r)));regions.value=previous;
     set('.progress',`已确认 ${j.samples.length} 条 · 待核对 ${j.unknown.length} 条\n已检查 ${j.checked.length} 个节点 · 失败 ${j.failures.length} 项\n${j.message}`);
     set('.time',`${j.cached?'使用缓存 · ':''}更新于 ${new Date(j.updatedAt).toLocaleString()}`);
+    q('.snp-evidence').hidden=!j.nodeSnps;
     const evidence=q('.snp-evidence > div');evidence.replaceChildren();
     const info=document.createElement('p');info.textContent=`23魔方本节点SNP：${j.nodeSnps?.join(', ')||'尚未读取'}（已核对 ${j.snpChecks?.length??0} / ${j.nodeSnps?.length??0}）`;evidence.append(info);
     for(const c of j.snpChecks||[]){const row=document.createElement('p');row.textContent=`${c.snp} → ${c.target||c.candidate?.marker&&('候选 '+c.candidate.marker)||'未确认对应'}${c.issue?' · '+c.issue:''} `;link(row,'查询依据',`${TY}/tree/${encodeURIComponent(c.target||j.marker)}?snp=${encodeURIComponent(c.snp)}`);evidence.append(row);
@@ -55,14 +57,14 @@ export function bootAncientUI(){
     if(j.status==='unmatched'){const row=document.createElement('p');link(row,'到TheYtree搜索支系',`${TY}/`);failures.append(row);q('.failures').hidden=false;}
     if(j.complete&&j.scope==='direct'){counts.set(j.marker,j.samples.length);updateBadges();}renderRows();
   }
-  async function query(refresh=false){const token=++serial;busy=true;job=null;set('.title',`${selected} · 古DNA`);set('.progress','正在查询…');q('.records').replaceChildren();q('.pending').replaceChildren();q('.unknown').hidden=true;q('.failures').hidden=true;q('.empty').hidden=false;set('.empty','正在读取TheYtree公开古DNA信息…');
-    set('.time','');set('.mapping','来源：TheYtree');q('.snp-evidence > div').replaceChildren();
+  async function query(refresh=false,useSnps=false){const token=++serial;busy=true;job=null;set('.title',`${selected} · 古DNA`);set('.progress','正在查询…');q('.records').replaceChildren();q('.pending').replaceChildren();q('.unknown').hidden=true;q('.failures').hidden=true;q('.empty').hidden=false;set('.empty','正在读取TheYtree公开古DNA信息…');
+    set('.time','');set('.mapping','来源：TheYtree');q('.snp-evidence > div').replaceChildren();q('.snp-evidence').hidden=true;
     q('.resume').hidden=true;q('.sync').hidden=true;q('.pause').hidden=true;
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
-    try{const name=selected,range=scope;const values=await readSnps(name);if(token!==serial)return;const j=await api({type:'anc.start',marker:name,scope:range,refresh,snps:values});if(token===serial)update(j);else void api({type:'anc.cancel',id:j.id}).catch(()=>{});}catch(e){if(token===serial){set('.empty',String(e));set('.progress','查询失败，不代表没有古样本');}}finally{if(token===serial)busy=false;}
+    try{const name=selected,range=scope;const values=useSnps?await readSnps(name):undefined;if(token!==serial)return;const j=await api({type:'anc.start',marker:name,scope:range,refresh,snps:values});if(token===serial)update(j);else void api({type:'anc.cancel',id:j.id}).catch(()=>{});}catch(e){if(token===serial){set('.empty',String(e));set('.progress','查询失败，不代表没有古样本');}}finally{if(token===serial)busy=false;}
   }
   function open(name:string){const m=marker(name);if(!m)return;priorFocus=document.activeElement;selected=m;scope='direct';q('.panel').hidden=false;q<HTMLInputElement>('input').value='';void query();q('.close').focus();}
-  function close(){q('.panel').hidden=true;serial++;if(job?.status==='running')void api({type:'anc.cancel',id:job.id});if(priorFocus instanceof HTMLElement||priorFocus instanceof SVGElement)(priorFocus as HTMLElement).focus?.();}
+  function close(){q('.panel').hidden=true;serial++;if(job&&['running','sync'].includes(job.status))void api({type:'anc.cancel',id:job.id}).catch(()=>{});if(priorFocus instanceof HTMLElement||priorFocus instanceof SVGElement)(priorFocus as HTMLElement).focus?.();}
   q('.close').onclick=close;document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!q('.panel').hidden)close();});
   for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.onclick=()=>{scope=b.dataset.scope as Scope;void query();};
   q('.refresh').onclick=()=>void query(true);
@@ -72,7 +74,13 @@ export function bootAncientUI(){
   function updateBadges(){for(const e of document.querySelectorAll<SVGGElement>('[data-mofang-ancient]')){const name=e.dataset.marker||'';const t=e.querySelector('text');const label=counts.has(name)?`古DNA · ${counts.get(name)}`:'古DNA';if(t&&t.textContent!==label)t.textContent=label;}}
   function scan(){
     const route=treeMarker(location.pathname);if(!route){document.querySelectorAll('[data-mofang-ancient],#mofang-ancient-entry').forEach(e=>e.remove());if(!q('.panel').hidden)close();return;}
-    const nodes=formalNodes(document).filter(({node})=>{const b=node.getBoundingClientRect();return b.bottom>=0&&b.top<=innerHeight;});
+    const eligible=formalNodes(document);const eligibleNodes=new Set(eligible.map(n=>n.node));
+    for(const b of document.querySelectorAll('[data-mofang-ancient]'))if(!eligibleNodes.has(b.parentElement as unknown as SVGGElement))b.remove();
+    const branchPage=location.pathname.includes('/branch');const youngBranch=branchPage&&!showAncientEntry(analysisAge(document));
+    if(!branchPage||youngBranch)document.getElementById('mofang-ancient-entry')?.remove();
+    const selectedYoung=!q('.panel').hidden&&(branchPage?youngBranch:[...document.querySelectorAll('.tree-wrapper g.node')].some(n=>marker(n.querySelector(':scope > text.label')?.textContent)===selected&&!showAncientEntry(formationAge(n.querySelector(':scope > .time')?.textContent))));
+    if(selectedYoung&&!q('.panel').hidden)close();
+    const nodes=eligible.filter(({node})=>{const b=node.getBoundingClientRect();return b.bottom>=0&&b.top<=innerHeight;});
     for(const {node,name}of nodes){
       let button=node.querySelector<SVGGElement>(':scope > [data-mofang-ancient]');
       if(!button){button=document.createElementNS(svgNS,'g');button.dataset.mofangAncient='1';button.dataset.marker=name;button.setAttribute('role','button');button.setAttribute('tabindex','0');button.setAttribute('aria-label',`${name} 古DNA`);button.style.cursor='pointer';
@@ -86,13 +94,14 @@ export function bootAncientUI(){
       const right=Math.max(...[...node.children].filter(e=>e!==button).map(e=>e.getBoundingClientRect().right));
       const x=(right-matrix.e)/matrix.a+8;const transform=`translate(${x},3)`;if(button.getAttribute('transform')!==transform)button.setAttribute('transform',transform);
     }
-    if(!nodes.length&&location.pathname.includes('/branch')){
+    if(!nodes.length&&branchPage&&!youngBranch){
       const heading=document.querySelector('h1');if(heading&&!document.getElementById('mofang-ancient-entry')){const b=document.createElement('button');b.id='mofang-ancient-entry';b.textContent='古DNA查询 · TheYtree';b.style.cssText='margin:8px 0;padding:8px 14px;border:1px solid #ccb58d;border-radius:7px;background:#f8f0df;color:#866134;cursor:pointer';b.onclick=()=>{const m=treeMarker(location.pathname);if(m)open(m);};heading.after(b);}
     }
     const names=[...new Set(nodes.map(n=>n.name))].slice(0,600);const key=names.join('|');if(key&&key!==lastCountRequest){lastCountRequest=key;void api({type:'anc.counts',markers:names}).then(result=>{for(const [m,v]of Object.entries<any>(result))counts.set(m,v.count);updateBadges();}).catch(()=>{});}updateBadges();
   }
   let priorRoute=location.pathname;
   setInterval(()=>{
+    if(document.hidden)return;
     if(location.pathname!==priorRoute){priorRoute=location.pathname;if(!q('.panel').hidden)close();}
     scan();
     if(job&&!q('.panel').hidden&&!busy){const id=job.id;const token=serial;busy=true;void api({type:'anc.get',id}).then(j=>{if(token===serial&&j?.id===id){const key=JSON.stringify(j);if(key!==lastState){lastState=key;update(j);}}}).catch(e=>{if(token===serial)set('.progress',String(e));}).finally(()=>{if(token===serial)busy=false;});}

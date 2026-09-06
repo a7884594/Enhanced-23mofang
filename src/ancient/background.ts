@@ -58,6 +58,10 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
       if(!bound)throw Error('这个源站页面的同步任务已失效');
       const j=await engine.get(id);if(!j||sourceMarker(new URL(sender.url!).pathname)!==(await get(`anc.syncTarget.${id}`)||j.target))throw Error('源站支系与查询不一致');
       if(message.type==='anc.sourceBegin')return engine.beginSource(id);
+      if(message.type==='anc.sourceUnmatched'){
+        const p=cleanPage(message.page);if(!p.valid||p.branches.some(b=>!b.tentative&&b.marker===j.marker))throw Error('尚不能确认同名节点缺失');
+        return engine.sourceUnmatched(id,safeText(message.mappingToken,100));
+      }
       if(message.type==='anc.sourceProblem')return engine.sourceProblem(id,safeText(message.error,500),safeText(message.mappingToken,100));
       if(['anc.sourceSnp','anc.sourceEquivalent'].includes(message.type)&&(!j.mappingToken||j.mappingToken!==message.mappingToken))throw Error('SNP核对已暂停或过期');
       if(message.type==='anc.sourceEquivalent')return engine.sourceEquivalent(id,safeText(message.candidateId,100),message.groups,message.method==='visible-dialog'?'visible-dialog':'authenticated-page',message.mappingToken);
