@@ -2,8 +2,8 @@ import {SAMPLE_KIND} from './profile';
 import {profileText} from './profile';
 import {TY,TTL,marker,sourceUrl,queryUrl,nodeUrl,normalizeTree,selectSamples,pathToRoot,dedupe,fresh,type QueryResult,type TreePage,type AncientSample} from './model';
 import {parseDetail} from './parser';
-import {snps,checkSnp,snpUrl,mappingTarget,needsSnpQuery,rebaseSearch} from './snps';
-import {equivalentEvidence,applyEquivalent,disambiguate,pendingEquivalentCandidates,type EquivalentEvidence} from './equivalent';
+import {snps,checkSnp,snpUrl,mappingTarget,needsSnpQuery,rebaseSearch,searchableSnps} from './snps';
+import {equivalentEvidence,applyEquivalent,disambiguate,pendingEquivalentCandidates,sameTreeFilter,type EquivalentEvidence} from './equivalent';
 import {directProjections,subtreeProjection} from './projection';
 import {knownDirectCount,downstreamCounts,type BadgeCount} from './counts';
 import {loadMatch,confirmedMatch,matchKey} from './node-match';
@@ -219,16 +219,16 @@ export class AncientEngine {
     if(!c||!j.nodeSnps||j.mappingReady)throw Error('不是当前任务的待核对节点');
     const evidence=equivalentEvidence(c,groups,j.nodeSnps,this.io.now(),method);
     j.snpChecks=applyEquivalent(j.snpChecks||[],evidence);
-    if(j.nodeSnps.every(s=>j.snpChecks!.some(v=>v.snp===s)))this.resolveMapping(j);
+    if(searchableSnps(j.nodeSnps,j.marker).every(s=>j.snpChecks!.some(v=>v.snp===s)))this.resolveMapping(j);
     await this.io.set(profileText(`anc.equivalent3.${c.id}.${c.marker}`),evidence);await this.save(j);return j;
   }
   async sourceSnp(id:string,value:string,page:TreePage){
     const j:QueryResult=await this.io.get(jobKey(id));
     if(!j||j.status==='paused'||!j.nodeSnps?.includes(value)||j.mappingReady)throw Error('SNP同步任务已过期');
-    const check=checkSnp(page,value,j.nodeSnps);
+    const check=checkSnp(page,value,j.nodeSnps,j.marker);
     if((!check.issue||check.candidate)&&JSON.stringify(check).length<100000)await this.io.set(`mofang.snp-search.v1.${value}`,{at:this.io.now(),check:rebaseSearch(check,[])});
     j.snpChecks=[...(j.snpChecks||[]).filter(v=>v.snp!==value),check];
-    if(j.nodeSnps.every(s=>j.snpChecks!.some(v=>v.snp===s)))this.resolveMapping(j);
+    if(searchableSnps(j.nodeSnps,j.marker).every(s=>j.snpChecks!.some(v=>v.snp===s))){j.snpChecks=sameTreeFilter(j.snpChecks!,j.marker);this.resolveMapping(j);}
     j.message=j.mappingReady?profileText('SNP对应已确认，正在读取古DNA'):j.message;
     await this.save(j);return j;
   }
@@ -268,7 +268,7 @@ export class AncientEngine {
     try{
       j.status='running';
       if(j.nodeSnps&&!j.mappingReady){
-        const values=j.nodeSnps.filter(value=>needsSnpQuery(j.snpChecks,value));
+        const values=searchableSnps(j.nodeSnps,j.marker).filter(value=>needsSnpQuery(j.snpChecks,value));
         let reused=0,checkpointAt=0;
         for(let offset=0;offset<values.length;offset+=4){
           if(c.signal.aborted)return;
@@ -278,7 +278,7 @@ export class AncientEngine {
             if(cached&&cached.check?.snp===value&&this.io.now()-cached.at<TTL){reused++;return rebaseSearch(cached.check,j.nodeSnps!);}
             const page=normalizeTree(JSON.parse(await this.request(snpUrl(value),c)));
             if(!page.valid)throw new SyncRequired(page.reason);
-            const check=checkSnp(page,value,j.nodeSnps!);
+            const check=checkSnp(page,value,j.nodeSnps!,j.marker);
             if(!c.signal.aborted&&(!check.issue||check.candidate)&&JSON.stringify(check).length<100000)await this.io.set(key,{at:this.io.now(),check:rebaseSearch(check,[])});
             return check;
           }));
@@ -291,6 +291,7 @@ export class AncientEngine {
           // Yield even on an all-cache batch so a large block cannot monopolize the worker.
           await new Promise(r=>setTimeout(r,0));
         }
+        j.snpChecks=sameTreeFilter(j.snpChecks||[],j.marker);
         for(const c of pendingEquivalentCandidates(j.snpChecks||[])){
           const e=await this.io.get(profileText(`anc.equivalent3.${c.id}.${c.marker}`));
           if(!j.forceRefresh&&e&&this.io.now()-e.capturedAt<TTL){

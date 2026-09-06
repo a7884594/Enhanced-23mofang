@@ -54,6 +54,22 @@ export function disambiguate(checks:SnpCheck[],primary:string):SnpCheck[]{
     `两站树粒度不同：${c.candidate.marker} 已在源站树中确认为 ${winner.marker} 的上游；本节点按主标记别名对应 ${winner.marker}`:
     `搜索歧义：${c.candidate.marker} 的共同SNP不足以建立本节点对应；已按主标记别名及第二个共同突变对应 ${winner.marker}，未合并该候选样本`}:c);
 }
+/** Drop candidates outside the primary marker's subtree. When the primary marker
+ * resolves to a candidate, other same-lineage candidates that are neither its
+ * ancestor nor descendant belong to a different subtree and are discarded rather
+ * than synced or treated as ambiguity. Without a primary candidate, keep all. */
+export function sameTreeFilter(checks:SnpCheck[],primary:string):SnpCheck[]{
+  const anchor=checks.find(c=>c.candidate&&c.snp===snp(primary))?.candidate;
+  if(!anchor)return checks;
+  const descendants=new Set(checks.filter(c=>c.candidate?.id===anchor.id).flatMap(c=>c.descendants||[]));
+  return checks.map(c=>{
+    if(!c.candidate||c.candidate.id===anchor.id)return c;
+    const downstream=descendants.has(c.candidate.marker);
+    const upstream=(c.descendants||[]).includes(anchor.marker);
+    if(downstream||upstream)return c;
+    return {...c,candidate:undefined,target:'',issue:'',note:`不同子树：${c.candidate.marker} 与主标记 ${anchor.marker} 不在同一父系子树，未采用`};
+  });
+}
 export function dialogGroups(doc:Document,c:EquivalentCandidate):string[]|null {
   const modal=doc.querySelector<HTMLElement>('#equivalentMutationsModal');
   if(!modal||modal.style.display==='none'||modal.querySelector('#equivalentMutationsModalTitle')?.textContent?.trim()!==c.marker)return null;

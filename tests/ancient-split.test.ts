@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {AncientEngine,type IO} from '../src/ancient/engine';
 import {normalizeTree} from '../src/ancient/model';
 import {checkSnp,mappingTarget,needsSnpQuery,type SnpCheck} from '../src/ancient/snps';
-import {applyEquivalent,disambiguate,equivalentEvidence,pendingEquivalentCandidates} from '../src/ancient/equivalent';
+import {applyEquivalent,disambiguate,equivalentEvidence,pendingEquivalentCandidates,sameTreeFilter} from '../src/ancient/equivalent';
 const f=JSON.parse(readFileSync('tests/fixtures/ancient/MF60234-equivalent.json','utf8'));
 // Relations observed in the normal tree; IDs 1/2/3 are local simulation IDs.
 const branches=[{hid:1,parent:0,name:'O-BY107602',equivalent_mutations:{equivalent_count:18}},{hid:2,parent:1,name:'O-BY7621',equivalent_mutations:{equivalent_count:0}},{hid:3,parent:2,name:'O-Y5702',equivalent_mutations:{equivalent_count:16}}];
@@ -59,4 +59,22 @@ test('primary name on a descendant resolves when the node also carries upstream 
   const resolved=disambiguate(checks,'O-MF159324');
   assert.equal(mappingTarget(resolved),'O-TYT168883');
   assert.ok(resolved.filter(c=>c.candidate?.id==='26524').every(c=>c.note?.includes('上游')&&c.target===''));
+});
+test('sameTreeFilter keeps the primary anchor and its subtree, discards other subtrees',()=>{
+  const anchor={id:'26524',marker:'O-FTB26869',count:4};
+  const descendant={id:'31572',marker:'O-BY37911',count:0};
+  const otherSubtree={id:'24306',marker:'O-A9472',count:32};
+  const checks=[
+    {snp:'MF160381',target:'',issue:'',url:'',candidate:anchor,descendants:['O-TYT168883','O-BY37911','O-FT131941']},
+    {snp:'FTB26864',target:'',issue:'',url:'',candidate:anchor,descendants:['O-TYT168883','O-BY37911','O-FT131941']},
+    {snp:'FTB48163',target:'',issue:'',url:'',candidate:descendant,descendants:[]},
+    {snp:'BY156070',target:'',issue:'',url:'',candidate:otherSubtree,descendants:['O-SK1759','O-TYT136059']},
+  ];
+  const filtered=sameTreeFilter(checks,'O-MF160381');
+  assert.ok(filtered.find(c=>c.snp==='MF160381')?.candidate);
+  assert.ok(filtered.find(c=>c.snp==='FTB48163')?.candidate);
+  assert.equal(filtered.find(c=>c.snp==='BY156070')?.candidate,undefined);
+  assert.ok(filtered.find(c=>c.snp==='BY156070')?.note?.includes('不同子树'));
+  // No primary candidate → everything is kept (fallback to other markers).
+  assert.equal(sameTreeFilter([{snp:'BY156070',target:'',issue:'',url:'',candidate:otherSubtree,descendants:[]}],'O-OTHER1').length,1);
 });

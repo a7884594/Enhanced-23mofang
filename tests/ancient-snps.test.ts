@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parseHTML} from 'linkedom';
-import {snps,checkSnp,mappingTarget} from '../src/ancient/snps';
+import {snps,checkSnp,mappingTarget,lineage,searchableSnps} from '../src/ancient/snps';
 import {normalizeTree} from '../src/ancient/model';
 import {AncientEngine,cacheKey,jobKey,type IO} from '../src/ancient/engine';
 import {localSnps} from '../src/ancient/mofang-bridge';
@@ -70,4 +70,19 @@ test('pausing prevents stale normal-page SNP resolution from changing target',as
  j.mappingReady=false;j.target='O-MF9915';j.complete=false;j.status='sync';await h.engine.save(j);await h.engine.pause(j.id);
  await assert.rejects(h.engine.sourceSnp(j.id,'BY220310',normalizeTree(raw(records[0]))));
  assert.equal((await h.engine.get(j.id))?.target,'O-MF9915');
+});
+test('lineage exposes only single-letter roots for cross-lineage filtering',()=>{
+ assert.equal(lineage('O-MF160381'),'O');assert.equal(lineage('I-CTS11871'),'I');assert.equal(lineage('A0'),'A');
+ assert.equal(lineage('ROOT'),'ROOT');assert.equal(lineage('BT-M91'),'');assert.equal(lineage('CT-M168'),'');
+});
+test('cross-lineage SNP hits are skipped and never become candidates',()=>{
+ const iPage=normalizeTree({code:1,data:{ytree:[{hid:5269,parent:5161,name:'I-CTS11871',equivalent_mutations:{equivalent_count:0}}]}});
+ const c=checkSnp(iPage,'S3673',['MF160381','S3673'],'O-MF160381');
+ assert.equal(c.candidate,undefined);assert.equal(c.target,'');assert.equal(c.issue,'');assert.ok(c.note?.includes('跨谱系'));
+ const plain=checkSnp(iPage,'S3673',['MF160381','S3673']);
+ assert.equal(plain.candidate?.marker,'I-CTS11871');assert.equal(plain.issue,'需登录TheYtree核对该候选节点的等价SNP列表');
+});
+test('searchableSnps puts the primary marker first and keeps the rest intact',()=>{
+ assert.deepEqual(searchableSnps(['A1','MF160381','B1'],'O-MF160381'),['MF160381','A1','B1']);
+ assert.deepEqual(searchableSnps(['A1','B1'],'O-MF160381'),['A1','B1']);
 });

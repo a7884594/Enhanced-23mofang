@@ -1,7 +1,7 @@
 import {profileText} from './profile';
 import {A_CHANNEL,TY,sourceMarker,queryUrl,nodeUrl,normalizeTree,sourceUrl,type TreePage,type QueryResult} from './model';
 import {equivalentUrl,equivalentEvidence,dialogGroups,pendingEquivalentCandidates} from './equivalent';
-import {snpUrl,needsSnpQuery} from './snps';
+import {snpUrl,needsSnpQuery,searchableSnps} from './snps';
 import {parseDetail,parseTreeDOM} from './parser';
 async function send(message:any){const r=await chrome.runtime.sendMessage(message);if(!r?.ok)throw Error(r?.error||'扩展通信失败');return r.value;}
 let rendered:TreePage|null=null;let running=false;let text:HTMLElement|null=null;
@@ -25,7 +25,7 @@ async function synchronize(force=false){
     window.postMessage({channel:A_CHANNEL,type:'read-source'},location.origin);
     await new Promise(r=>setTimeout(r,350));
     if(job.nodeSnps&&!job.mappingReady){
-      for(const value of job.nodeSnps){
+      for(const value of searchableSnps(job.nodeSnps,job.marker)){
         if(!needsSnpQuery(job.snpChecks,value))continue;
         const state=await send({type:profileText('anc.sourceContext')});if(state?.status==='paused')return;
         const p=normalizeTree(JSON.parse(await fetchPage(snpUrl(value))));if(!p.valid)throw Error(p.reason);

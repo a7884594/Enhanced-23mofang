@@ -5,6 +5,10 @@ export function snp(v:unknown):string|null {
   return /^[A-Z][A-Z0-9._]*\d[A-Z0-9._]*$/.test(s)?s:null;
 }
 export function snps(v:unknown):string[]{return Array.isArray(v)?[...new Set(v.map(snp).filter((s):s is string=>!!s))].sort():[];}
+/** Top-level haplogroup letter, used to reject cross-lineage name collisions. Compound prefixes (BT/CT/…) return '' so they are never filtered. */
+export function lineage(m:string):string{const s=m.toUpperCase();if(s==='ROOT')return 'ROOT';const head=/^[A-Z]+/.exec(s)?.[0]??'';return /^[A-Z]$/.test(head)?head:'';}
+/** SNP search order for a node: the primary marker first, so its candidate anchors same-tree filtering before other markers are checked. Falls back to the full list when the primary is not present. */
+export function searchableSnps(nodeSnps:string[],marker:string):string[]{const primary=snp(marker);const list=nodeSnps||[];return primary&&list.includes(primary)?[primary,...list.filter(s=>s!==primary)]:list;}
 export const snpUrl=(s:string)=>`${TY}/api/ysnp/theytree/?snp=${encodeURIComponent(s)}`;
 export interface SnpCheck {snp:string;target:string;issue:string;url:string;note?:string;descendants?:string[];candidate?:import('./equivalent').EquivalentCandidate;evidence?:import('./equivalent').EquivalentEvidence}
 // A search's source candidate is reusable, but its match depends on LOCAL SNPs.
@@ -20,11 +24,14 @@ export function needsSnpQuery(checks:SnpCheck[]|undefined,value:string):boolean 
 // Search may return the default world tree for unknown SNPs. Never accept its
 // first row or an ancestor as an alias. Require a unique subtree root whose
 // primary SNP is explicitly present in the clicked node's LOCAL rsids list.
-export function checkSnp(page:TreePage,value:string,local:string[]):SnpCheck {
+export function checkSnp(page:TreePage,value:string,local:string[],nodeMarker?:string):SnpCheck {
   const ids=new Set(page.branches.map(b=>b.id));
   const roots=page.branches.filter(b=>!ids.has(b.parent)&&!b.tentative);
   const root=roots.length===1?roots[0]:null;
-  const target=root&&marker(root.marker)&&local.includes(snp(root.marker)||'')?root.marker:'';
+  // A name resolving to a different top-level haplogroup is a cross-lineage
+  // name collision (e.g. an O node carrying an I-indexed SNP name), not a match.
+  const crossLineage=!!(root&&nodeMarker&&lineage(nodeMarker)&&lineage(root.marker)&&lineage(nodeMarker)!==lineage(root.marker));
+  const target=root&&!crossLineage&&marker(root.marker)&&local.includes(snp(root.marker)||'')?root.marker:'';
   const defaultTree=page.branches.some(b=>b.marker==='ROOT');
   const descendants:string[]=[];
   if(root&&!defaultTree&&ids.size===page.branches.length){
@@ -35,7 +42,7 @@ export function checkSnp(page:TreePage,value:string,local:string[]):SnpCheck {
       if(b.tentative||seen.has(b.id))continue;seen.add(b.id);queue.push(b.id);descendants.push(b.marker);
     }
   }
-  return {snp:value,target,issue:!target&&!defaultTree?'需登录TheYtree核对该候选节点的等价SNP列表':'',url:snpUrl(value),descendants,candidate:root&&!defaultTree?{id:root.id,marker:root.marker,count:root.equivalentCount}:undefined};
+  return {snp:value,target,issue:!target&&!defaultTree&&!crossLineage?'需登录TheYtree核对该候选节点的等价SNP列表':'',url:snpUrl(value),note:crossLineage?`同名跨谱系：${root!.marker} 与 ${nodeMarker} 不属于同一父系，未采用`:undefined,descendants,candidate:root&&!defaultTree&&!crossLineage?{id:root.id,marker:root.marker,count:root.equivalentCount}:undefined};
 }
 export function mappingTarget(checks:SnpCheck[]):string {
   const targets=[...new Set(checks.map(c=>c.target).filter(Boolean))];
