@@ -2,7 +2,7 @@ import {build} from 'esbuild';
 import {mkdir,copyFile,readFile,writeFile} from 'node:fs/promises';
 import {deflateSync} from 'node:zlib';
 await mkdir('dist/assets',{recursive:true});await mkdir('dist/icons',{recursive:true});
-await build({entryPoints:['src/content.ts','src/bridge.ts'],outdir:'dist',bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
+await build({entryPoints:['src/content.ts','src/bridge.ts','src/ancient/ui.ts','src/ancient/background.ts','src/ancient/source.ts','src/ancient/source-bridge.ts'],outdir:'dist',outbase:'src',bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
 await copyFile('manifest.json','dist/manifest.json');
 await copyFile('assets/counties.geo.json','dist/assets/counties.geo.json');
 await copyFile('assets/map-provenance.json','dist/assets/map-provenance.json');
@@ -25,3 +25,12 @@ for(const size of [48,128]) {
 const license=await readFile('node_modules/echarts/LICENSE','utf8');
 await writeFile('dist/THIRD-PARTY-NOTICES.txt',`ECharts and zrender: Apache License 2.0\n${license}\nMap boundaries: supplied by the public 23mofang mapData endpoint; retrieved for this local-use extension. See assets/map-provenance.json for provenance. No public redistribution or map ownership is claimed.\n`);
 console.log('Built unpacked extension: dist/');
+// Include notices for all installed production dependencies in the local bundle.
+await mkdir('dist/licenses',{recursive:true});
+const lock=JSON.parse(await readFile('package-lock.json','utf8'));
+for(const [path,info] of Object.entries(lock.packages)){
+  if(!path||info.dev||!path.startsWith('node_modules/'))continue;
+  for(const name of ['LICENSE','LICENSE.md','LICENSE.txt','license','LICENSE-MIT']){
+    try{const text=await readFile(`${path}/${name}`,'utf8');await writeFile(`dist/licenses/${path.replaceAll('/','_')}.txt`,text);break;}catch{}
+  }
+}

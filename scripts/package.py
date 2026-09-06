@@ -31,6 +31,9 @@ with zipfile.ZipFile(installer) as z:
     assert z.testzip() is None
     manifest = json.loads(z.read('extension/manifest.json'))
     assert manifest['manifest_version'] == 3
+    assert 'extension/' + manifest['background']['service_worker'] in z.namelist()
+    assert manifest['permissions'] == ['storage']
+    assert manifest['host_permissions'] == ['https://www.theytree.com/*']
     for script in manifest['content_scripts']:
         for name in script['js']:
             assert 'extension/' + name in z.namelist()

@@ -1,6 +1,6 @@
 {
   "name": "23mofang-county-map",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,10 +9,12 @@
     "fixtures": "node scripts/fixtures.mjs",
     "test": "tsx --test tests/*.test.ts",
     "check": "tsc --noEmit",
-    "preview": "node scripts/preview.mjs"
+    "preview": "node scripts/preview.mjs",
+    "preview:ancient": "tsx scripts/ancient-preview.ts"
   },
   "dependencies": {
-    "echarts": "^6.0.0"
+    "echarts": "^6.0.0",
+    "linkedom": "^0.18.13"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.0",
