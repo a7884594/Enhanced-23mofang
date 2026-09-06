@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "23魔方 · 全国区县频率地图",
+  "version": "1.0.0",
+  "description": "打开父系支系分析页，自动显示全国区县频率地图。支持搜索、缩放和原地图切换。",
+  "minimum_chrome_version": "111",
+  "icons": {"48":"icons/48.png","128":"icons/128.png"},
+  "content_scripts": [
+    {"matches":["https://www.23mofang.com/*"],"js":["bridge.js"],"run_at":"document_start","world":"MAIN"},
+    {"matches":["https://www.23mofang.com/*"],"js":["content.js"],"run_at":"document_start"}
+  ],
+  "web_accessible_resources": [{"resources":["assets/counties.geo.json"],"matches":["https://www.23mofang.com/*"]}]
+}
