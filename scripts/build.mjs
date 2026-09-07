@@ -2,7 +2,7 @@ import {build} from 'esbuild';
 import {mkdir,copyFile,readFile,writeFile,appendFile} from 'node:fs/promises';
 import {deflateSync} from 'node:zlib';
 await mkdir('dist/assets',{recursive:true});await mkdir('dist/icons',{recursive:true});
-await build({entryPoints:['src/popup.ts','src/bridge.ts','src/ancient/mofang-bridge.ts','src/ancient/background.ts','src/ancient/source.ts','src/ancient/source-bridge.ts','src/ancient/mofang-snp-bridge.ts'],outdir:'dist',outbase:'src',define:{__RESEARCH__:'false'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
+await build({entryPoints:['src/popup.ts','src/bridge.ts','src/node-filter-bridge.ts','src/ancient/mofang-bridge.ts','src/ancient/background.ts','src/ancient/source.ts','src/ancient/source-bridge.ts','src/ancient/mofang-snp-bridge.ts'],outdir:'dist',outbase:'src',define:{__RESEARCH__:'false'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
 await build({entryPoints:['src/ancient/mofang-bridge.ts','src/ancient/background.ts','src/ancient/source.ts','src/ancient/source-bridge.ts'],outdir:'dist/research',outbase:'src/ancient',define:{__RESEARCH__:'true'},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
 // Bundle lazy initializers so disabled features never install UI, timers, or observers.
 for(const [source,output,feature,research] of [
