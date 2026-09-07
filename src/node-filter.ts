@@ -78,17 +78,19 @@ function group(title: string, value: number, onInput: (v: number) => void): HTML
 
 async function boot(): Promise<void> {
   const filter = await loadFilter();
-  let installed = false;
+  let control: HTMLElement | null = null;
 
   const install = () => {
-    if (installed) return;
     const content = document.querySelector('.node-filter-content');
     if (!content) return;
-    content.append(
+    // Re-inject if the site re-rendered the popup and dropped our controls.
+    if (control?.isConnected && control.parentElement === content) return;
+    control = document.createElement('div');
+    control.append(
       group('最小宗亲数量（扩展）', filter.minSamples, v => { filter.minSamples = v; saveFilter(filter); applyFilter(filter); }),
       group('最小一级支系数（扩展）', filter.minChildren, v => { filter.minChildren = v; saveFilter(filter); applyFilter(filter); }),
     );
-    installed = true;
+    content.append(control);
   };
 
   let timer = 0;
@@ -109,4 +111,7 @@ async function boot(): Promise<void> {
   applyFilter(filter);
 }
 
-void boot().catch(() => {});
+if (typeof document !== 'undefined') {
+  if (document.body) void boot().catch(e => console.error('节点筛选启动失败', e));
+  else document.addEventListener('DOMContentLoaded', () => void boot().catch(e => console.error('节点筛选启动失败', e)), { once: true });
+}
