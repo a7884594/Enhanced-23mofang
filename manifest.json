@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Enhanced 23mofang",
-  "version": "1.5.16",
+  "version": "1.5.17",
   "description": "全国区县/市级地图，TheYtree、YFull、FTDNA公开古DNA、科研与匿名现代样本查询。",
   "permissions": ["storage"],
   "action": {"default_title":"Enhanced 23mofang · 功能开关","default_popup":"popup.html"},

@@ -12,14 +12,14 @@ export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Prom
 export class SyncRequired extends Error{}
 export const jobKey=(id:string)=>profileText(`anc.job.${id}`);
 export const cacheKey=(m:string,s:string)=>profileText(`anc.cache.fast4.${m}.${s}`);
-/** Shared gate: four total reads, at most two details, 500ms starts; trees stay exclusive. */
+/** Shared gate: sixteen total reads, at most two details, 500ms starts; trees stay exclusive. */
 export class RequestGate {
   private tail:Promise<any>=Promise.resolve();private next=0;
   private active=new Map<Promise<any>,'snp'|'detail'|'tree'>();
   fetch(url:string,signal:AbortSignal){
     const work=this.tail.catch(()=>{}).then(async()=>{
       const u=new URL(url);const kind=u.origin===TY&&u.pathname==='/api/ysnp/theytree/'&&u.searchParams.has('snp')?'snp':u.origin===TY&&/^\/sample\/[a-zA-Z0-9_-]+\.html$/.test(u.pathname)?'detail':'tree';
-      while(this.active.size&&(kind==='tree'||this.active.size>=4||[...this.active.values()].includes('tree')||kind==='detail'&&[...this.active.values()].filter(v=>v==='detail').length>=2)){await Promise.race([...this.active.keys()].map(p=>p.catch(()=>{})));if(signal.aborted)throw new DOMException('Cancelled','AbortError');}
+      while(this.active.size&&(kind==='tree'||this.active.size>=16||[...this.active.values()].includes('tree')||kind==='detail'&&[...this.active.values()].filter(v=>v==='detail').length>=2)){await Promise.race([...this.active.keys()].map(p=>p.catch(()=>{})));if(signal.aborted)throw new DOMException('Cancelled','AbortError');}
       const wait=Math.max(0,this.next-Date.now());if(wait)await new Promise(r=>setTimeout(r,wait));
       if(signal.aborted)throw new DOMException('Cancelled','AbortError');
       this.next=Date.now()+500;
@@ -270,9 +270,9 @@ export class AncientEngine {
       if(j.nodeSnps&&!j.mappingReady){
         const values=searchableSnps(j.nodeSnps,j.marker).filter(value=>needsSnpQuery(j.snpChecks,value));
         let reused=0,checkpointAt=0;
-        for(let offset=0;offset<values.length;offset+=4){
+        for(let offset=0;offset<values.length;offset+=16){
           if(c.signal.aborted)return;
-          const batch=await Promise.allSettled(values.slice(offset,offset+4).map(async value=>{
+          const batch=await Promise.allSettled(values.slice(offset,offset+16).map(async value=>{
             const key=`mofang.snp-search.v1.${value}`;
             const cached=!j.forceRefresh?await this.io.get(key):null;
             if(cached&&cached.check?.snp===value&&this.io.now()-cached.at<TTL){reused++;return rebaseSearch(cached.check,j.nodeSnps!);}
@@ -285,7 +285,7 @@ export class AncientEngine {
           if(c.signal.aborted)return;
           let failure:PromiseRejectedResult|undefined;
           for(const result of batch){if(result.status==='fulfilled')j.snpChecks=[...(j.snpChecks||[]).filter(v=>v.snp!==result.value.snp),result.value];else failure??=result;}
-          j.message=`正在核对节点SNP：${j.snpChecks?.length||0} / ${j.nodeSnps.length} · 本轮复用 ${reused} 条 · 最多4个请求`;
+          j.message=`正在核对节点SNP：${j.snpChecks?.length||0} / ${j.nodeSnps.length} · 本轮复用 ${reused} 条 · 最多16个请求`;
           if(failure||offset+4>=values.length||this.io.now()-checkpointAt>=300){await this.save(j);checkpointAt=this.io.now();}
           if(failure)throw failure.reason;
           // Yield even on an all-cache batch so a large block cannot monopolize the worker.
