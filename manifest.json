@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Enhanced 23mofang",
-  "version": "1.5.17",
+  "version": "1.5.18",
   "description": "全国区县/市级地图，TheYtree、YFull、FTDNA公开古DNA、科研与匿名现代样本查询。",
   "permissions": ["storage"],
   "action": {"default_title":"Enhanced 23mofang · 功能开关","default_popup":"popup.html"},
@@ -11,7 +11,7 @@
   "icons": {"48":"icons/48.png","128":"icons/128.png"},
   "content_scripts": [
     {"matches":["https://www.23mofang.com/*"],"js":["bridge.js","ancient/mofang-bridge.js","research/mofang-bridge.js","samples/ancestry-bridge.js","ancient/mofang-snp-bridge.js"],"run_at":"document_start","world":"MAIN"},
-    {"matches":["https://www.23mofang.com/*"],"js":["content.js","ancient/ui.js","research/ui.js","samples/ui.js","ancient/mofang-snp-entry.js"],"run_at":"document_start"},
+    {"matches":["https://www.23mofang.com/*"],"js":["content.js","ancient/ui.js","research/ui.js","samples/ui.js","ancient/mofang-snp-entry.js","node-filter.js"],"run_at":"document_start"},
     {"matches":["https://www.theytree.com/tree/*"],"js":["ancient/source-bridge.js","research/source-bridge.js"],"run_at":"document_start","world":"MAIN"},
     {"matches":["https://www.theytree.com/tree/*"],"js":["ancient/source.js","research/source.js"],"run_at":"document_idle"}
   ],

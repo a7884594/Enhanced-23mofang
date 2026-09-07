@@ -1,6 +1,7 @@
 export const FEATURE_KEYS = {
   samples: 'mofang.features.samples',
   map: 'mofang.features.map',
+  nodes: 'mofang.features.nodes',
 } as const;
 export type Feature = keyof typeof FEATURE_KEYS;
 

@@ -11,6 +11,7 @@ for(const [source,output,feature,research] of [
   ['ancient/ui','research/ui','samples',true],
   ['samples/ui','samples/ui','samples',false],
   ['ancient/mofang-snp-entry','ancient/mofang-snp-entry','samples',false],
+  ['node-filter','node-filter','nodes',false],
 ]) await build({stdin:{contents:`import {runFeature} from './src/features'; void runFeature('${feature}',()=>import('./src/${source}'));`,resolveDir:process.cwd(),loader:'ts'},outfile:`dist/${output}.js`,define:{__RESEARCH__:String(research)},bundle:true,format:'iife',target:'chrome111',minify:true,legalComments:'eof'});
 await copyFile('src/popup.html','dist/popup.html');
 // One classic MV3 worker, two isolated message handlers, one shared request gate.

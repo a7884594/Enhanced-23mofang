@@ -1,5 +1,11 @@
 # 验证记录
 
+## 1.5.18 父系树节点筛选
+
+- 新增 node-filter 内容脚本：向父系树筛选弹窗 `.node-filter-content` 注入「最小宗亲数量」「最小一级支系数」两个数值输入；阈值存 chrome.storage.local，MutationObserver + 路由轮询在树重绘后重新应用隐藏。
+- 宗亲数量读节点 `__data__.data.clanRelationCount`，一级支系数读 `__data__.children.length`；低于阈值的 `.tree-wrapper g.node` 设 display:none，阈值均为0时不隐藏。
+- 新增 `features.nodes` 开关与弹窗项。TypeScript、190项全量测试、构建通过；未在用户已安装扩展中直接更新（真实树节点数据字段名以线上页面为准）。
+
 ## 1.5.17 SNP核对并发16
 
 - RequestGate 全局读取上限从4提高到16，run() 的 SNP 批次从4条提高到16条，进度提示同步更新；样本详情上限2、树请求独占、500ms启动间隔保持不变。
