@@ -27,7 +27,7 @@ test('native SNP click opens a separate dialog, blocks native hover, preserves a
   const {dom,w,d}=fixture();let native=0,queries=0,opened='';
   const button=d.querySelector('.snp-wrapper');button.addEventListener('click',()=>native++);button.addEventListener('mouseover',()=>native++);
   d.addEventListener('mofang-sample-panel-open',(e:any)=>opened=e.detail);
-  const page=bootSnpPage(d,{read:async()=>groups,query:async(value,provider)=>{queries++;assert.equal(value,'M1633');assert.equal(provider,'mofang');return {query:value,url:'https://www.23mofang.com/ancestry/ytree/O-F8',status:'ok',message:'查询成功',rows:[{name:value,position:'hg19:123',mutation:'C→T',time:''}]};}})!;
+  const page=bootSnpPage(d,{read:async()=>groups,query:async(value,provider,owner)=>{queries++;assert.equal(value,'M1633');assert.equal(provider,'mofang');assert.equal(owner,'O-F8');return {query:value,url:'https://www.23mofang.com/ancestry/ytree/O-F8',status:'ok',message:'查询成功',rows:[{name:value,position:'hg19:123',mutation:'C→T',time:''}]};}})!;
   button.dispatchEvent(new w.MouseEvent('mouseover',{bubbles:true}));assert.equal(native,0);assert.equal(page.dialog.open,false);
   button.querySelector('text').dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true}));await tick();
   assert.equal(native,0);assert.equal(opened,'snp');assert.equal(page.dialog.open,true);

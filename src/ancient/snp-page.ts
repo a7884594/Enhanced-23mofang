@@ -38,11 +38,11 @@ form{grid-column:2;grid-row:1;display:flex;gap:7px;align-items:center}form input
 @media(max-width:700px){dialog{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0}header{padding:14px 16px}h1{font-size:20px}main{padding:14px 16px}.snp-lookup{height:auto}.snp-layout{height:auto;display:flex;flex-direction:column;gap:14px}.snp-layout>p[role=status]{align-self:stretch}.snp-options{min-height:80px;max-height:36dvh;flex-shrink:0}.snp-result{min-height:130px;overflow:visible}form{order:-1}.snp-layout>button{align-self:flex-start}}
 `;
 
-type Services = {read: (name: string) => Promise<string[]>; query: (value: string, provider?: 'theytree' | 'mofang') => Promise<SnpResult>};
+type Services = {read: (name: string) => Promise<string[]>; query: (value: string, provider?: 'theytree' | 'mofang',owner?:string) => Promise<SnpResult>};
 export function bootSnpPage(doc = document, services: Services = {
   read: readOrderedNodeSnps,
-  query: async (value, provider) => {
-    if (provider === 'mofang') return requestMofangSnp(value);
+  query: async (value, provider,owner) => {
+    if (provider === 'mofang') return requestMofangSnp(value,owner);
     const response = await chrome.runtime.sendMessage({type: 'anc.snpLookup', snp: value});
     if (!response?.ok) throw Error(response?.error || 'SNP查询失败，请重试');
     return response.value;

@@ -4,6 +4,33 @@ import {createRequire} from 'node:module';
 import {createSnpLookup} from '../src/ancient/snp-lookup';
 const {JSDOM}=createRequire(import.meta.url)('jsdom');
 const tick=()=>new Promise(r=>setTimeout(r,10));
+test('every panel opening defaults to TheYtree and failures never switch sources',async()=>{
+  const dom=new JSDOM('<body/>');const calls:string[]=[];
+  const lookup=createSnpLookup(dom.window.document,undefined,async(value,provider)=>{calls.push(provider!);return {status:'empty',query:value,url:'',message:'未返回记录',rows:[]};});
+  const select=lookup.element.querySelector('select')!,form=lookup.element.querySelector('form')!;
+  const submit=async()=>{form.dispatchEvent(new dom.window.Event('submit',{cancelable:true}));await tick();};
+  lookup.setMarker('O-M1518');assert.equal(select.value,'theytree');await submit();
+  assert.deepEqual(calls,['theytree']);assert.equal(select.value,'theytree');
+  select.value='mofang';lookup.reset();assert.equal(select.value,'theytree');
+  select.value='mofang';lookup.setMarker('O-M1528');assert.equal(select.value,'theytree');await submit();
+  assert.deepEqual(calls,['theytree','theytree']);
+  assert.equal(new URL(lookup.element.querySelector('a')!.href).searchParams.get('snpname'),'M1528');
+  assert.equal(lookup.element.querySelector('a')!.textContent,'打开 TheYtree SNP 查询页 ↗');dom.window.close();
+});
+test('source links distinguish SNP search, branch page, and report login destinations',async()=>{
+  const dom=new JSDOM('<body/>');let url='https://www.23mofang.com/ancestry/ytree/O-M1518';
+  const lookup=createSnpLookup(dom.window.document,undefined,async value=>({status:'unsupported',query:value,url,message:'无坐标',rows:[]}));
+  lookup.setMarker('O-M1518');const select=lookup.element.querySelector('select')!,form=lookup.element.querySelector('form')!;
+  const submit=async()=>{form.dispatchEvent(new dom.window.Event('submit',{cancelable:true}));await tick();};
+  select.value='mofang';await submit();
+  assert.deepEqual([...lookup.element.querySelectorAll('a')].map(a=>[a.textContent,a.href]),[
+    ['查看23魔方支系页 ↗','https://www.23mofang.com/ancestry/ytree/O-M1518'],
+    ['打开23魔方报告／登录 ↗','https://www.23mofang.com/report/gene-origin/my-origin'],
+  ]);
+  url='https://example.com/ancestry/ytree/O-M1518';await submit();assert.equal(lookup.element.querySelectorAll('a').length,1);
+  select.value='theytree';await submit();assert.equal(lookup.element.querySelectorAll('a').length,1);assert.equal(new URL(lookup.element.querySelector('a')!.href).hostname,'www.theytree.com');
+  dom.window.close();
+});
 test('SNP list reads only on expansion and selecting a name never submits a query',async()=>{
   const dom=new JSDOM('<body/>');const d=dom.window.document;let reads=0,submits=0;
   const lookup=createSnpLookup(d,async name=>{reads++;assert.equal(name,'O-MF109594');return ['MF109594','MF109928','Y176322','MF109928'];});
