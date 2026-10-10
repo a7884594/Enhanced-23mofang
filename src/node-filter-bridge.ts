@@ -1,6 +1,7 @@
 // MAIN-world bridge: D3 stores tree data on DOM expandos that are not visible
 // to Chrome's isolated content-script world.
-import {NODE_FILTER_CHANNEL, type NodeFilterThresholds} from './node-filter-shared';
+import {normalizeThreshold, type NodeFilterThresholds} from './node-filter-shared';
+import {installNodeFilterController} from './node-filter-controller';
 
 const NODE_SEL = '.tree-wrapper g.node';
 const LINK_SEL = '.tree-wrapper path.link';
@@ -114,18 +115,19 @@ function sourceAnchorX(layout: NodeLayout, originalAnchors: Map<any, number>): n
 function structuralTreeMutation(record: MutationRecord): boolean {
   const asElement = (node: Node | null): Element | null => node?.nodeType === 1 ? node as Element : null;
   const target = asElement(record.target) ?? asElement(record.target.parentNode);
-  if (!target?.closest('.tree-wrapper')) return false;
-  if (record.type === 'attributes') return target.matches('g.node,path.link,svg.overlay');
+  const insideTree=!!target?.closest('.tree-wrapper');
+  if (record.type === 'attributes') return insideTree&&!!target?.matches('g.node,path.link,svg.overlay');
   const changed = [...record.addedNodes, ...record.removedNodes];
   return changed.some(node => {
     const element = asElement(node);
+    if(!insideTree)return !!element&&(element.matches('.tree-wrapper')||!!element.querySelector('.tree-wrapper'));
     return !!element && (element.matches('g.node,path.link,.tree-wrapper,svg.overlay') ||
       !!element.querySelector('g.node,path.link,.tree-wrapper,svg.overlay'));
   });
 }
 
 function threshold(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+  return normalizeThreshold(value);
 }
 
 export function nodeCounts(node: Element): NodeCounts | null {
@@ -216,13 +218,12 @@ export function applyPageNodeFilter(documentRoot: Document, raw: unknown): void 
   }
 }
 
-export function installPageNodeFilterBridge(pageWindow: Window): MutationObserver {
+export function observePageNodeFilter(pageWindow: Window, readFilter:()=>NodeFilterThresholds|null): MutationObserver {
   const documentRoot = pageWindow.document;
-  let currentFilter: NodeFilterThresholds | null = null;
   let observing = false;
   const MutationObserverConstructor = (pageWindow as Window & {MutationObserver: typeof MutationObserver}).MutationObserver;
   const observer = new MutationObserverConstructor((records: MutationRecord[]) => {
-    if (!currentFilter || !records.some(structuralTreeMutation)) return;
+    if (!readFilter()?.minSamples || !records.some(structuralTreeMutation)) return;
     applyCurrent();
   });
   const observe = () => {
@@ -236,21 +237,25 @@ export function installPageNodeFilterBridge(pageWindow: Window): MutationObserve
     observing = true;
   };
   const applyCurrent = () => {
-    if (!currentFilter) return;
+    const currentFilter=readFilter();if (!currentFilter) return;
     observer.disconnect();
     observing = false;
     try { applyPageNodeFilter(documentRoot, currentFilter); }
     finally { observe(); }
   };
-  pageWindow.addEventListener('message', event => {
-    if (event.source !== pageWindow || event.origin !== pageWindow.location.origin) return;
-    if (event.data?.channel !== NODE_FILTER_CHANNEL || event.data?.type !== 'apply') return;
-    const value = event.data.filter as Partial<NodeFilterThresholds> | null;
-    currentFilter = {minSamples: threshold(value?.minSamples)};
-    applyCurrent();
-  });
   observe();
   return observer;
+}
+
+export function installPageNodeFilterBridge(pageWindow: Window): void {
+  let currentFilter:NodeFilterThresholds={minSamples:0};
+  const observer=observePageNodeFilter(pageWindow,()=>currentFilter);
+  installNodeFilterController(pageWindow,value=>{
+    currentFilter={minSamples:value};
+    observer.disconnect();
+    try{applyPageNodeFilter(pageWindow.document,currentFilter);}
+    finally{observer.observe(pageWindow.document,{childList:true,subtree:true,attributes:true,attributeFilter:['transform','d','height']});}
+  });
 }
 
 if (typeof window !== 'undefined') {

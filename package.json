@@ -1,6 +1,6 @@
 {
   "name": "enhanced-23mofang",
-  "version": "1.5.29",
+  "version": "1.5.30",
   "private": true,
   "type": "module",
   "scripts": {
@@ -26,6 +26,8 @@
     "jsdom": "^26.1.0",
     "mapshaper": "^0.6.0",
     "tsx": "^4.20.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vue": "2.7.16",
+    "vue-router": "3.6.5"
   }
 }

@@ -1,8 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {applyPageNodeFilter, installPageNodeFilterBridge, nodeCounts} from '../src/node-filter-bridge';
-import {NODE_FILTER_CHANNEL} from '../src/node-filter-shared';
+import {applyPageNodeFilter, observePageNodeFilter, nodeCounts} from '../src/node-filter-bridge';
 
 const {JSDOM} = createRequire(import.meta.url)('jsdom');
 
@@ -100,11 +99,10 @@ test('installed MAIN observer compacts an expanded tree in the mutation microtas
   root.__data__ = {x: 0, y: 0, data: {clanRelationCount: 100}, parent: null};
   child.__data__ = {x: 65.8, y: 50, data: {clanRelationCount: 50}, parent: root.__data__};
   (document.querySelector('#to-child') as any).__data__ = child.__data__;
-  const observer = installPageNodeFilterBridge(w as Window);
+  const observer = observePageNodeFilter(w as Window,()=>({minSamples:10}));
 
   try {
-    w.dispatchEvent(new w.MessageEvent('message', {source: w, origin: w.location.origin,
-      data: {channel: NODE_FILTER_CHANNEL, type: 'apply', filter: {minSamples: 10}}}));
+    applyPageNodeFilter(document,{minSamples:10});
 
     const hidden = document.createElementNS('http://www.w3.org/2000/svg', 'g') as any;
     hidden.setAttribute('id', 'hidden'); hidden.setAttribute('class', 'node'); hidden.setAttribute('transform', 'translate(65.8, 50)');
