@@ -41,7 +41,7 @@ with zipfile.ZipFile(installer) as z:
     manifest = json.loads(z.read('extension/manifest.json'))
     assert manifest['manifest_version'] == 3
     assert 'extension/' + manifest['background']['service_worker'] in z.namelist()
-    assert manifest['permissions'] == ['storage']
+    assert manifest['permissions'] == ['storage', 'unlimitedStorage']
     assert manifest['host_permissions'] == ['https://www.theytree.com/*', 'https://www.yfull.com/*', 'https://discover.familytreedna.com/*']
     assert 'extension/samples/background.js' in z.namelist()
     for script in manifest['content_scripts']:

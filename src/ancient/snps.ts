@@ -10,7 +10,7 @@ export function lineage(m:string):string{const s=m.toUpperCase();if(s==='ROOT')r
 /** SNP search order for a node: the primary marker first, so its candidate anchors same-tree filtering before other markers are checked. Falls back to the full list when the primary is not present. */
 export function searchableSnps(nodeSnps:string[],marker:string):string[]{const primary=snp(marker);const list=nodeSnps||[];return primary&&list.includes(primary)?[primary,...list.filter(s=>s!==primary)]:list;}
 export const snpUrl=(s:string)=>`${TY}/api/ysnp/theytree/?snp=${encodeURIComponent(s)}`;
-export interface SnpCheck {snp:string;target:string;issue:string;url:string;note?:string;descendants?:string[];candidate?:import('./equivalent').EquivalentCandidate;evidence?:import('./equivalent').EquivalentEvidence}
+export interface SnpCheck {snp:string;target:string;issue:string;url:string;note?:string;descendants?:string[];candidate?:import('./equivalent').EquivalentCandidate;evidence?:import('./equivalent').EquivalentEvidence;proof?:{id:string;marker:string;overlap:string[];capturedAt:number;method:import('./equivalent').EquivalentEvidence['method'];groupCount?:number}}
 // A search's source candidate is reusable, but its match depends on LOCAL SNPs.
 export function rebaseSearch(check:SnpCheck,local:string[]):SnpCheck {
   const candidate=check.candidate;const target=candidate&&local.includes(snp(candidate.marker)||'')?candidate.marker:'';

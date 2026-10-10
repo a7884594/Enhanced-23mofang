@@ -8,7 +8,7 @@ import {directProjections,subtreeProjection} from './projection';
 import {knownDirectCount,downstreamCounts,type BadgeCount} from './counts';
 import {loadMatch,confirmedMatch,matchKey} from './node-match';
 import {resolveTarget} from './aliases';
-export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Promise<void>;request(url:string,signal:AbortSignal):Promise<{status:number;url:string;body:string}>;now():number;id():string}
+export interface IO {get(key:string):Promise<any>;set(key:string,value:any):Promise<void>;remove?(key:string|string[]):Promise<void>;request(url:string,signal:AbortSignal):Promise<{status:number;url:string;body:string}>;now():number;id():string}
 export class SyncRequired extends Error{}
 export const jobKey=(id:string)=>profileText(`anc.job.${id}`);
 export const cacheKey=(m:string,s:string)=>profileText(`anc.cache.fast4.${m}.${s}`);
@@ -37,11 +37,16 @@ export class AncientEngine {
   constructor(private io:IO){}
   private remembered=new Map<string,string>();
   private badgeSynced=new Set<string>();
+  private pendingKey(j:Pick<QueryResult,'marker'|'scope'>){return profileText(`anc.pending.fast4.${j.marker}.${j.scope}`);}
   private async rememberMatch(j:QueryResult){const value=confirmedMatch(j);if(!value||j.matchReused)return;const fingerprint=JSON.stringify([value.target,value.nodeSnps,value.snpChecks]);if(this.remembered.get(j.id)===fingerprint)return;await this.io.set(matchKey(j.marker),value);j.mappingVerifiedAt=value.verifiedAt;this.remembered.set(j.id,fingerprint);}
   async save(job:QueryResult,touch=true){
     const previous=job.scope==='downstream'?await this.io.get(jobKey(job.id)):null;
     if(touch)job.updatedAt=this.io.now();await this.rememberMatch(job);await this.io.set(jobKey(job.id),job);
-    if(!job.complete&&job.status!=='unmatched')await this.io.set(profileText(`anc.pending.fast4.${job.marker}.${job.scope}`),job.id);
+    const pendingKey=this.pendingKey(job),pendingId=await this.io.get(pendingKey);
+    if(!job.complete&&job.status!=='unmatched'){
+      await this.io.set(pendingKey,job.id);
+      if(pendingId&&pendingId!==job.id)await this.io.remove?.(jobKey(pendingId));
+    }else if(pendingId===job.id)await this.io.remove?.(pendingKey);
     if(job.scope==='downstream'){
       const counts=downstreamCounts(job,this.io.now()),old=previous?downstreamCounts(previous,this.io.now()):new Map<string,BadgeCount>();let changed=false;
       for(const name of new Set([...counts.keys(),...old.keys()])){
@@ -158,6 +163,11 @@ export class AncientEngine {
     await this.save(job);void this.run(job.id);return job;
   }
   async pause(id:string){this.active.get(id)?.abort();this.active.delete(id);const j=await this.io.get(jobKey(id));if(j&&j.status!=='complete'){j.status='paused';j.syncToken='';j.mappingToken='';j.message='查询已暂停，已取得的结果保留';await this.save(j);}return j;}
+  async release(id:string){
+    this.active.get(id)?.abort();this.active.delete(id);const j:QueryResult|null=await this.io.get(jobKey(id));if(!j)return;
+    const pending=await this.io.get(this.pendingKey(j));
+    if(pending!==id||j.complete||j.status==='unmatched')await this.io.remove?.(jobKey(id));
+  }
   async backgroundSync(id:string){
     const j:QueryResult=await this.pause(id);if(!j)throw Error('任务不存在');
     const configured=resolveTarget(j.marker),saved=await loadMatch(this.io,j.marker);
@@ -173,15 +183,18 @@ export class AncientEngine {
   private integrate(j:QueryResult,page:TreePage,requested?:string){
     const map=new Map(j.branches.map(b=>[b.id,b]));for(const b of page.branches)map.set(b.id,b);
     if(requested&&map.has(requested)&&page.branches.length+page.samples.length+page.unclassified.length+page.excluded>0)map.set(requested,{...map.get(requested)!,pending:false});
-    j.branches=[...map.values()];
-    const root=j.branches.find(b=>!b.tentative&&b.marker===j.target);
+    const allBranches=[...map.values()];
+    const root=allBranches.find(b=>!b.tentative&&b.marker===j.target);
     if(!root){j.status='unmatched';j.message='TheYtree返回的树中未找到同名节点，未使用上游节点替代';return;}
-    const combined:TreePage={...page,branches:j.branches,samples:dedupe([...j.samples,...page.samples]),unclassified:dedupe([...j.unknown,...page.unclassified])};
+    const combined:TreePage={...page,branches:allBranches,samples:dedupe([...j.samples,...page.samples]),unclassified:dedupe([...j.unknown,...page.unclassified])};
     const selected=selectSamples(combined,root,j.scope);
     const conflicts=selected.samples.filter(s=>s.tentative||s.issue.includes('多个挂载'));
     j.samples=selected.samples.filter(s=>!conflicts.includes(s));j.unknown=dedupe([...selected.unknown,...conflicts]);
-    const relevant=j.branches.filter(b=>{const p=pathToRoot(b.id,root.id,j.branches);return p&&(j.scope==='downstream'||b.id===root.id||p.length===2&&b.tentative);});
-    j.checked=[...new Set([...j.checked,...relevant.filter(b=>!b.pending).map(b=>b.id)])];
+    const relevant=allBranches.filter(b=>{const p=pathToRoot(b.id,root.id,allBranches);return p&&(j.scope==='downstream'||b.id===root.id||p.length===2&&b.tentative);});
+    // Persist only the connected query scope; broad source pages may contain a
+    // much larger surrounding tree that is irrelevant to this result.
+    j.branches=relevant;const relevantIds=new Set(relevant.map(b=>b.id));
+    j.checked=[...new Set([...j.checked.filter(id=>relevantIds.has(id)),...relevant.filter(b=>!b.pending).map(b=>b.id)])];
     j.queue=relevant.filter(b=>b.pending&&!j.checked.includes(b.id)).map(b=>b.id);
     j.details=[...j.samples,...j.unknown].filter(s=>!s.detail).map(s=>s.au);
     j.excluded=Math.max(j.excluded,page.excluded);

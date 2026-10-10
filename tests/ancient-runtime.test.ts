@@ -18,6 +18,17 @@ test('background isolates owners and serializes rapid starts from one tab',async
   assert.equal((await ask({type:'anc.start',marker:'O-F8'},1,'https://evil.example')).ok,false);
   await ask({type:'anc.cancel',id:b.value.id});
 });
+test('runtime ownership uses session storage and releasing a completed panel removes its UUID job',async()=>{
+  const local:Record<string,any>={},session:Record<string,any>={};let listener:any;let counter=0;
+  const area=(store:Record<string,any>)=>({get:async(k:any)=>k==null?structuredClone(store):typeof k==='string'&&k in store?{[k]:structuredClone(store[k])}:{},set:async(v:any)=>Object.assign(store,structuredClone(v)),remove:async(k:string|string[])=>{for(const key of Array.isArray(k)?k:[k])delete store[key];}});
+  const chrome={runtime:{onMessage:{addListener:(l:any)=>{listener=l;}}},storage:{local:area(local),session:area(session)},tabs:{create:async()=>({id:99}),onRemoved:{addListener:()=>{}}}};
+  runInNewContext(worker,{chrome,console,URL,AbortController,AbortSignal,DOMException,setTimeout,clearTimeout,atob,btoa,crypto:{randomUUID:()=>`session-${++counter}`},fetch:async(url:string)=>({status:200,url,text:async()=>JSON.stringify({code:1,data:{ytree:[{hid:28,parent:0,name:'O-F8',isParent:0}]}})})});
+  const ask=(m:any)=>new Promise<any>(resolve=>listener(m,{url:'https://www.23mofang.com/ancestry/ytree/O-F8',tab:{id:7}},resolve));
+  const started=await ask({type:'anc.start',marker:'O-F8',scope:'direct'});assert.equal(started.ok,true);assert.equal(local['anc.owner.7'],undefined);assert.equal(session['anc.owner.7'],started.value.id);
+  let job:any;for(let i=0;i<100;i++){job=(await ask({type:'anc.get',id:started.value.id})).value;if(job.complete)break;await new Promise(r=>setTimeout(r,5));}
+  assert.equal(job.complete,true);assert.ok(local[`anc.job.${started.value.id}`]);
+  assert.equal((await ask({type:'anc.release',id:started.value.id})).ok,true);assert.equal(session['anc.owner.7'],undefined);assert.equal(local[`anc.job.${started.value.id}`],undefined);assert.ok(local['anc.cache.fast4.O-F8.direct']);
+});
 test('source bridge exports only ancient whitelist fields, not the raw tree object',()=>{
   const dom=new JSDOM('<body></body>',{url:'https://www.theytree.com/tree/O-F8',runScripts:'outside-only'});const w=dom.window as any;const messages:any[]=[];
   const rows=[{hid:28,parent:0,name:'O-F8',children:[{sid:1,parent:28,stype:2,name:'Ancient',cookie:'SECRET'},{sid:2,parent:28,stype:1,name:'MODERN_PRIVATE'}]}];

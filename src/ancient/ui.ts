@@ -73,6 +73,7 @@ export function bootAncientUI(){
     const info=document.createElement('p');info.textContent=`23魔方本节点SNP：${j.nodeSnps?.join(', ')||'尚未读取'}（已核对 ${j.snpChecks?.length??0} / ${j.nodeSnps?.length??0}）`;evidence.append(info);
     for(const c of j.snpChecks||[]){const row=document.createElement('p');row.textContent=`${c.snp} → ${c.target||c.candidate?.marker&&('候选 '+c.candidate.marker)||'未确认对应'}${c.issue?' · '+c.issue:''} `;link(row,'查询依据',`${TY}/tree/${encodeURIComponent(c.target||j.marker)}?snp=${encodeURIComponent(c.snp)}`);evidence.append(row);
       if(c.evidence){const detail=document.createElement('p');detail.textContent=`TheYtree等价SNP：${c.evidence.groups.join(', ')}；共同SNP：${c.evidence.overlap.join(', ')||'无'}；读取时间：${new Date(c.evidence.capturedAt).toLocaleString()}`;evidence.append(detail);}
+      else if(c.proof){const detail=document.createElement('p');detail.textContent=`TheYtree等价SNP摘要：${c.proof.groupCount??'未记录'} 组；共同SNP：${c.proof.overlap.join(', ')||'无'}；读取时间：${new Date(c.proof.capturedAt).toLocaleString()}`;evidence.append(detail);}
       if(c.evidence?.ignored?.length){const note=document.createElement('p');note.className='issue';note.textContent=`带注释标记保留原文、未参与匹配：${c.evidence.ignored.join(', ')}`;evidence.append(note);}
       if(c.note){const note=document.createElement('p');note.className='issue';note.textContent=c.note;evidence.append(note);}
     }
@@ -86,10 +87,10 @@ export function bootAncientUI(){
     q('.resume').hidden=true;q('.sync').hidden=true;q('.pause').hidden=true;
     backgroundButton.hidden=true;
     for(const b of shadow.querySelectorAll<HTMLButtonElement>('[data-scope]'))b.setAttribute('aria-selected',String(b.dataset.scope===scope));
-    try{const name=selected,range=scope;const values=useSnps?await readSnps(name):undefined;if(token!==serial)return;const j=await api({type:profileText('anc.start'),marker:name,scope:range,refresh,snps:values});if(token===serial)update(j);else void api({type:profileText('anc.cancel'),id:j.id}).catch(()=>{});}catch(e){if(token===serial){set('.empty',String(e));set('.progress',profileText('查询失败，不代表没有古样本'));}}finally{if(token===serial)busy=false;}
+    try{const name=selected,range=scope;const values=useSnps?await readSnps(name):undefined;if(token!==serial)return;const j=await api({type:profileText('anc.start'),marker:name,scope:range,refresh,snps:values});if(token===serial)update(j);else void api({type:profileText('anc.cancel'),id:j.id}).catch(()=>{}).finally(()=>api({type:profileText('anc.release'),id:j.id}).catch(()=>{}));}catch(e){if(token===serial){set('.empty',String(e));set('.progress',profileText('查询失败，不代表没有古样本'));}}finally{if(token===serial)busy=false;}
   }
   function open(name:string){const m=marker(name);if(!m)return;document.dispatchEvent(new CustomEvent('mofang-sample-panel-open',{detail:RESEARCH?'research':'ancient'}));priorFocus=document.activeElement;selected=m;scope='direct';q('.panel').hidden=false;q<HTMLInputElement>('input').value='';void query();q('.close').focus();}
-  function close(){q('.panel').hidden=true;serial++;if(job&&['running','sync'].includes(job.status))void api({type:profileText('anc.cancel'),id:job.id}).catch(()=>{});if(priorFocus instanceof HTMLElement||priorFocus instanceof SVGElement)(priorFocus as HTMLElement).focus?.();}
+  function close(){q('.panel').hidden=true;serial++;const current=job;job=null;if(current){const release=()=>api({type:profileText('anc.release'),id:current.id}).catch(()=>{});if(['running','sync'].includes(current.status))void api({type:profileText('anc.cancel'),id:current.id}).catch(()=>{}).finally(release);else void release();}if(priorFocus instanceof HTMLElement||priorFocus instanceof SVGElement)(priorFocus as HTMLElement).focus?.();}
   document.addEventListener('mofang-sample-panel-open',event=>{if((event as CustomEvent).detail!==(RESEARCH?'research':'ancient')&&!q('.panel').hidden)close();});
   q('.close').onclick=close;document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!q('.panel').hidden)close();});
   q<HTMLDetailsElement>('.snp-evidence').ontoggle=()=>{if(job&&q<HTMLDetailsElement>('.snp-evidence').open)update(job);};
@@ -99,7 +100,7 @@ export function bootAncientUI(){
   q('input').oninput=renderRows;for(const s of shadow.querySelectorAll('select'))s.onchange=renderRows;
   const svgNS='http://www.w3.org/2000/svg';let lastCountRequest='';let countGeneration=0;
   function invalidateCounts(){lastCountRequest='';countGeneration++;}
-  chrome.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&(changes[profileText('anc.cacheRevision')]||Object.keys(changes).some(k=>k.startsWith('mofang.node-match.v1.'))))invalidateCounts();});
+  chrome.storage?.onChanged?.addListener((changes,area)=>{if(area==='local'&&(changes[profileText('anc.cacheRevision')]||Object.keys(changes).some(k=>/^mofang\.node-match\.v[12]\./.test(k))))invalidateCounts();});
   function updateBadges(){for(const e of document.querySelectorAll<SVGGElement>(profileText('[data-mofang-ancient]')))paintAncientBadge(e,counts.get(e.dataset.marker||'')?.count,counts.get(e.dataset.marker||'')?.complete);const entry=document.querySelector<HTMLButtonElement>(profileText('#mofang-ancient-entry'));if(entry)paintAnalysisEntry(entry,counts.get(entry.dataset.marker||'')?.count,counts.get(entry.dataset.marker||'')?.complete);document.dispatchEvent(new CustomEvent('mofang-badges-layout'));}
   function scan(){
     const route=treeMarker(location.pathname);if(!route){document.querySelectorAll(profileText('[data-mofang-ancient],#mofang-ancient-entry')).forEach(e=>e.remove());if(!q('.panel').hidden)close();return;}

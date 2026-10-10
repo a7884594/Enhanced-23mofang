@@ -1,18 +1,23 @@
 import {marker,type QueryResult} from './model';
 import {snps,mappingTarget} from './snps';
 import type {IO} from './engine';
-export const matchKey=(name:string)=>`mofang.node-match.v1.${name}`;
-export type NodeMatch=Pick<QueryResult,'marker'|'target'|'mapping'|'nodeSnps'|'snpChecks'> & {verifiedAt:number};
+export const matchKey=(name:string)=>`mofang.node-match.v2.${name}`;
+const legacyMatchKey=(name:string)=>`mofang.node-match.v1.${name}`;
+export type NodeMatch=Pick<QueryResult,'marker'|'target'|'mapping'|'nodeSnps'|'snpChecks'> & {verifiedAt:number;lastAccessedAt?:number};
 export function confirmedMatch(j:QueryResult):NodeMatch|null {
   if(!j?.mappingReady||!marker(j.marker)||!marker(j.target)||!j.nodeSnps?.length||!j.snpChecks?.length)return null;
   const values=snps(j.nodeSnps);
   if(!values.length||!values.every(s=>j.snpChecks!.some(c=>c.snp===s))||j.snpChecks.some(c=>c.issue)||mappingTarget(j.snpChecks)!==j.target)return null;
-  return {marker:j.marker,target:j.target,mapping:j.mapping,nodeSnps:values,snpChecks:j.snpChecks,verifiedAt:j.mappingVerifiedAt??j.updatedAt};
+  return {marker:j.marker,target:j.target,mapping:j.mapping,nodeSnps:values,snpChecks:j.snpChecks,verifiedAt:j.mappingVerifiedAt??j.updatedAt,lastAccessedAt:j.updatedAt};
 }
 /** Node identity is independent of sample category, sample completeness and scope. */
 export async function loadMatch(io:IO,name:string):Promise<NodeMatch|null>{
-  const saved=await io.get(matchKey(name));
-  if(saved&&confirmedMatch({...saved,mappingReady:true,updatedAt:saved.verifiedAt} as QueryResult))return saved;
+  let saved=await io.get(matchKey(name));
+  if(!saved){
+    const legacy=await io.get(legacyMatchKey(name));
+    if(legacy&&confirmedMatch({...legacy,mappingReady:true,updatedAt:legacy.verifiedAt} as QueryResult)){await io.set(matchKey(name),legacy);saved=await io.get(matchKey(name))||legacy;}
+  }
+  if(saved&&confirmedMatch({...saved,mappingReady:true,updatedAt:saved.verifiedAt} as QueryResult)){saved={...saved,lastAccessedAt:io.now()};await io.set(matchKey(name),saved);return saved;}
   // Reuse previously verified local checkpoints, including a still-running or
   // paused detail query. Do not migrate samples or task ownership between modes.
   const matches:NodeMatch[]=[];

@@ -3,14 +3,18 @@ import {profileText} from './profile';
 import {fetchSnpResult} from './snp-result';
 import {AncientEngine,RequestGate,jobKey,cacheKey} from './engine';
 import {TY,marker,sourceMarker,treeUrl,sourceUrl,normalizeTree,fresh,summary,safeText,paperUrl,type TreePage,type AncientSample} from './model';
+import {managedLocalStore,runtimeStore} from '../storage';
 const gate:RequestGate=((globalThis as any).__mofangSharedGate??=new RequestGate());
-const engine=new AncientEngine({get:async key=>(await chrome.storage.local.get(key))[key],set:async(key,value)=>{await chrome.storage.local.set({[key]:value});},request:(url,signal)=>gate.fetch(url,signal),now:()=>Date.now(),id:()=>crypto.randomUUID()});
+const local=managedLocalStore(),runtime=runtimeStore();
+const engine=new AncientEngine({get:key=>local.get(key),set:(key,value)=>local.set(key,value),remove:key=>local.remove(key),request:(url,signal)=>gate.fetch(url,signal),now:()=>Date.now(),id:()=>crypto.randomUUID()});
 const ownerKey=(tab:number)=>profileText(`anc.owner.${tab}`);
-async function get(key:string):Promise<any>{return (await chrome.storage.local.get(key))[key];}
+async function get(key:string):Promise<any>{return runtime.get(key);}
+async function maintainStorage(){const values=await runtime.all();await local.maintain(Object.entries(values).filter(([key])=>/^(?:anc|res)\.owner\./.test(key)).map(([,id])=>id).filter((id):id is string=>typeof id==='string'));}
+void maintainStorage().catch(error=>console.error('缓存自检失败',error));
 const starts=new Map<number,Promise<any>>();
 async function startForTab(tab:number,message:any){
   const previous=starts.get(tab)||Promise.resolve();
-  const work=previous.catch(()=>{}).then(async()=>{const old=await get(ownerKey(tab));if(old)await engine.pause(old);const j=await engine.start(message.marker,message.scope==='downstream'?'downstream':'direct',!!message.refresh,message.snps);await chrome.storage.local.set({[ownerKey(tab)]:j.id,[profileText(`anc.parentTab.${j.id}`)]:tab});return j;});
+  const work=previous.catch(()=>{}).then(async()=>{const old=await get(ownerKey(tab));if(old)await engine.pause(old);const j=await engine.start(message.marker,message.scope==='downstream'?'downstream':'direct',!!message.refresh,message.snps);await runtime.set(ownerKey(tab),j.id);await runtime.set(profileText(`anc.parentTab.${j.id}`),tab);if(old&&old!==j.id){await runtime.remove(profileText(`anc.parentTab.${old}`));await engine.release(old);}void maintainStorage().catch(()=>{});return j;});
   starts.set(tab,work);try{return await work;}finally{if(starts.get(tab)===work)starts.delete(tab);}
 }
 async function owned(id:unknown,sender:chrome.runtime.MessageSender){if(typeof id!=='string'||!sender.tab?.id||await get(ownerKey(sender.tab.id))!==id)throw Error('此页面没有该查询任务');return id;}
@@ -41,9 +45,10 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
       const id=await owned(message.id,sender);
       if(message.type===profileText('anc.get'))return engine.get(id);
       if(message.type===profileText('anc.cancel'))return engine.pause(id);
+      if(message.type===profileText('anc.release')){await engine.release(id);await runtime.remove([ownerKey(tab),profileText(`anc.parentTab.${id}`)]);void maintainStorage().catch(()=>{});return true;}
       if(message.type===profileText('anc.resume'))return engine.resume(id);
       if(message.type===profileText('anc.backgroundSync')){
-        await chrome.storage.local.set({[profileText(`anc.syncTab.${id}`)]:null});
+        await runtime.remove(profileText(`anc.syncTab.${id}`));
         return engine.backgroundSync(id);
       }
       if(message.type===profileText('anc.sync')){
@@ -54,10 +59,10 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
         // Old candidate diagnostics must never override a resolved node. Read
         // the paused snapshot so the URL and the task binding use one state.
         const target=waiting.mappingReady?waiting.target:waiting.snpChecks?.find(v=>v.issue&&v.candidate)?.candidate?.marker||waiting.target;
-        await chrome.storage.local.set({[profileText(`anc.syncTarget.${id}`)]:target});
+        await runtime.set(profileText(`anc.syncTarget.${id}`),target);
         const opened=await chrome.tabs.create({url:treeUrl(target),active:true});
         if(opened.id==null)throw Error('无法打开源站页面');
-        await chrome.storage.local.set({[profileText(`anc.sync.${opened.id}`)]:id,[profileText(`anc.syncTab.${id}`)]:opened.id});return {opened:true};
+        await runtime.set(profileText(`anc.sync.${opened.id}`),id);await runtime.set(profileText(`anc.syncTab.${id}`),opened.id);return {opened:true};
       }
     }
     if(origin===TY&&tab!=null){
@@ -102,3 +107,7 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   })().then(value=>reply({ok:true,value}),error=>reply({ok:false,error:error instanceof Error?error.message:String(error)}));
   return true;
 });
+chrome.tabs.onRemoved?.addListener(tab=>{void (async()=>{
+  const sourceId=await get(profileText(`anc.sync.${tab}`));if(sourceId){await runtime.remove([profileText(`anc.sync.${tab}`),profileText(`anc.syncTab.${sourceId}`)]);}
+  const id=await get(ownerKey(tab));if(!id)return;const sourceTab=await get(profileText(`anc.syncTab.${id}`));await engine.release(id);await runtime.remove([ownerKey(tab),profileText(`anc.parentTab.${id}`),profileText(`anc.syncTarget.${id}`),profileText(`anc.syncTab.${id}`),...(Number.isInteger(sourceTab)?[profileText(`anc.sync.${sourceTab}`)]:[])]);
+})().catch(error=>console.error(profileText('清理古DNA会话失败'),error));});
