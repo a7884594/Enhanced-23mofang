@@ -1,7 +1,7 @@
 import * as echarts from 'echarts/core';
 import {GeoComponent,TooltipComponent} from 'echarts/components';
 import {CanvasRenderer} from 'echarts/renderers';
-import {CHANNEL,copyRegions,copySelections,flatten,flattenCities,matchCounties,percentText,quantiles,colorFor,NO_DATA,routeNode,type Snapshot,type Atlas,type Matched,type GeoFeature} from './model';
+import {CHANNEL,copyRegions,copySelections,flatten,flattenCities,matchCounties,percentText,naturalBreaks,colorFor,NO_DATA,routeNode,type Snapshot,type Atlas,type Matched,type GeoFeature} from './model';
 import {CSS} from './style';
 import {prepareAtlas} from './geography';
 import {findMapMount,insertMapHost} from './layout';
@@ -130,7 +130,7 @@ async function render(){
     const records=extract(s.items,s.birthplace);const result=matchCounties(records,atlas,geometryLevel);matched=result.matched;
     // Keep the same nationwide thresholds when birthplace filters change.
     const scaleRecords=s.birthplace.length?matchCounties(extract(s.items),atlas,geometryLevel).matched:matched;
-    const bins=quantiles(scaleRecords.map(m=>m.record.percent!));
+    const bins=naturalBreaks(scaleRecords.map(m=>m.record.percent!));
     echarts.registerMap(mapName,atlas as any);
     q('.notice').hidden=true;q('.map-wrap').hidden=false;
     chart=echarts.init(q('.map'),undefined,{renderer:'canvas',devicePixelRatio:Math.min(devicePixelRatio,2)});
@@ -142,8 +142,9 @@ async function render(){
     chart.on('click',(p:any)=>{if(p.name)text('.selection',describe(p.name).replace('\n','　'));});
     observer=new ResizeObserver(()=>chart?.resize());observer.observe(q('.map'));
     const legend=q('.legend');legend.replaceChildren();
-    const label=document.createElement('span');label.className='legend-label';label.textContent='低频（绿）→ 高频（红） · 全国分位数';legend.append(label);
-    for(const bin of [...bins,{color:NO_DATA,label:'未提供 / 未匹配'}]){const key=document.createElement('span');key.className='key';const swatch=document.createElement('i');swatch.className='swatch';swatch.style.background=bin.color;key.append(swatch,document.createTextNode(bin.label));legend.append(key);}
+    const label=document.createElement('span');label.className='legend-label';label.textContent='低频（绿）→ 高频（红） · 当前支系全国分档';legend.append(label);
+    for(const bin of [...bins,{color:NO_DATA,label:'未提供 / 未匹配',title:'未提供或未匹配，不代表 0%'}]){const key=document.createElement('span');key.className='key';key.title=bin.title||bin.label;key.tabIndex=0;key.setAttribute('aria-label',`${bin.label}；${key.title}`);const swatch=document.createElement('i');swatch.className='swatch';swatch.style.background=bin.color;key.append(swatch,document.createTextNode(bin.label));legend.append(key);}
+    const note=document.createElement('span');note.className='legend-note';note.textContent='颜色表示本支系内的相对高低，不同支系请比较具体频率。≈ 表示约数，悬停色档可查看完整边界。';legend.append(note);
     text('.status',`已匹配 ${matched.length} / ${records.length} 条${name}数据 · 未匹配 ${result.unmatched.length} 条${matched.some(m=>m.feature.properties.group)?` · 其中 ${matched.filter(m=>m.feature.properties.group).length} 条使用旧版边界`:''}${s.label?' · 籍贯筛选：'+s.label:''}${atlas.metadata?.failures?.length?' · 部分地图边界下载失败':''}`);
     text('.sub',s.label?'当前显示所选籍贯范围，频率沿用网站原值':'全国视图 · 与当前支系数据同步');
     for(const u of result.unmatched){const tr=document.createElement('tr');for(const value of [u.record.path.join(' / '),percentText(u.record.percent),u.reason]){const td=document.createElement('td');td.textContent=value;tr.append(td);}q('tbody').append(tr);}

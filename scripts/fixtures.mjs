@@ -15,7 +15,8 @@ export function decodeLiteral(node,env=Object.create(null)) {
   }
 }
 await mkdir('tests/fixtures',{recursive:true});
-for(const node of ['O-CTS7316','O-MF564266','O-BY11777']) {
+for(const node of (process.argv.length>2?process.argv.slice(2):['O-CTS7316','O-MF564266','O-BY11777'])) {
+  if(!/^O-[\w]+$/.test(node))throw Error(`Invalid node: ${node}`);
   const url=`https://www.23mofang.com/ancestry/ytree/${node}/branch`;
   const html=await(await fetch(url)).text();
   const source=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]).find(s=>s.startsWith('window.__NUXT__='));

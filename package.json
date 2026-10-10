@@ -1,6 +1,6 @@
 {
   "name": "enhanced-23mofang",
-  "version": "1.5.28",
+  "version": "1.5.29",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,7 +15,8 @@
   "dependencies": {
     "acorn": "^8.18.0",
     "echarts": "^6.0.0",
-    "linkedom": "^0.18.13"
+    "linkedom": "^0.18.13",
+    "simple-statistics": "7.12.1"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.0",

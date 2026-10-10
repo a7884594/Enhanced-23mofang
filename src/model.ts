@@ -1,4 +1,5 @@
 import {prepareAtlas,supplementaryFeature,missingBoundaryReason} from './geography';
+import {ckmeans} from 'simple-statistics';
 export interface Region {code:string; name:string; percent:number|null; childItems:Region[]}
 export interface Selection {code:string; name?:string}
 export interface Snapshot {route:string; node:string; status:'ready'|'loading'|'empty'|'error'; items:Region[]; birthplace:Selection[][]; label:string; error?:string}
@@ -8,7 +9,8 @@ export interface Atlas {type:'FeatureCollection'; features:GeoFeature[]; metadat
 export interface Matched {record:County; feature:GeoFeature}
 export interface Unmatched {record:County; reason:string}
 export const CHANNEL='mofang-county-map/v1';
-export const COLORS=['#1a9850','#91cf60','#fee08b','#fc8d59','#d73027'];
+// Original five anchors, with one rounded RGB midpoint between each pair.
+export const COLORS=['#1a9850','#56b458','#91cf60','#c8d876','#fee08b','#fdb772','#fc8d59','#ea5f40','#d73027'];
 export const NO_DATA='#e9edf1';
 export function routeNode(path:string):string|null {
   const match=/^\/ancestry\/ytree\/([^/]+)\/branch\/?$/.exec(path);
@@ -89,17 +91,31 @@ export function percentText(value:number|null):string {
   // Same display threshold as the website (rounded to two percentage decimals).
   return Number((value*100).toFixed(2))<0.01?'<0.01%':`${(value*100).toFixed(2)}%`;
 }
-export interface Bin {min:number; max:number; color:string; label:string}
-export function quantiles(values:number[]):Bin[] {
-  const sorted=values.filter(Number.isFinite).sort((a,b)=>a-b);if(!sorted.length)return [];
-  const last=sorted.at(-1)!; const cuts:number[]=[];
-  for(let i=1;i<5;i++) {
-    const pos=(sorted.length-1)*i/5, low=Math.floor(pos);
-    const value=sorted[low]+(sorted[Math.ceil(pos)]-sorted[low])*(pos-low);
-    if(value<last && !cuts.includes(value))cuts.push(value);
-  }
-  cuts.push(last);
-  const text=(v:number)=>`${Number((v*100).toPrecision(5))}%`;
-  return cuts.map((max,i)=>({min:i===0?sorted[0]:cuts[i-1],max,color:COLORS[cuts.length===1?2:Math.round(i*4/(cuts.length-1))],label:i===0?(sorted[0]===max?text(max):`${text(sorted[0])}–${text(max)}`):`>${text(cuts[i-1])}–${text(max)}`}));
+export interface Bin {min:number; max:number; color:string; label:string; title?:string}
+export function naturalBreaks(values:number[]):Bin[] {
+  const sorted=values.filter(v=>Number.isFinite(v)&&v>=0&&v<=1).sort((a,b)=>a-b);
+  if(!sorted.length)return [];
+  const count=Math.min(COLORS.length,new Set(sorted).size);
+  // Preserve repeated observations: each matched administrative region has equal weight.
+  const cuts=ckmeans(sorted,count).map(group=>group.at(-1)!);
+  const boundaries=[...new Set([sorted[0],...cuts])];
+  let decimals=2;
+  while(decimals<20&&new Set(boundaries.map(v=>(v*100).toFixed(decimals))).size<boundaries.length)decimals++;
+  const useFixed=new Set(boundaries.map(v=>(v*100).toFixed(decimals))).size===boundaries.length;
+  const display=(v:number)=>{
+    const percent=v*100;
+    const formatted=percent.toFixed(decimals);
+    // At floating-point limits use the round-trip representation, never collapse boundaries.
+    const value=!useFixed||(Number(formatted)===0&&percent!==0)?String(percent):formatted;
+    return `${Number(value)!==percent?'≈':''}${value}%`;
+  };
+  const range=(min:number,max:number,i:number,format:(v:number)=>string)=>
+    min===max?format(max):`${i===0?'':'>'}${format(min)}–${format(max)}`;
+  return cuts.map((max,i)=>{
+    const min=i===0?sorted[0]:cuts[i-1];
+    return {min,max,color:COLORS[count===1?4:Math.round(i*8/(count-1))],
+      label:range(min,max,i,display),
+      title:`${range(min,max,i,v=>`${v*100}%`)}；原始比例 ${i===0?'[':'('}${min}, ${max}]`};
+  });
 }
 export function colorFor(value:number,bins:Bin[]):string {return bins.find((b,i)=>(i===0?value>=b.min:value>b.min)&&value<=b.max)?.color||NO_DATA;}

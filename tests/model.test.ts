@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {COLORS,copyRegions,copySelections,flatten,matchCounties,percentText,quantiles,colorFor,routeNode,type Atlas} from '../src/model.ts';
+import {COLORS,copyRegions,copySelections,flatten,matchCounties,percentText,naturalBreaks,colorFor,routeNode,type Atlas} from '../src/model.ts';
 const fixture=JSON.parse(readFileSync('tests/fixtures/O-CTS7316.json','utf8'));
 const items=copyRegions(fixture.geographicDistribution.chartItems);
 const records=flatten(items);
@@ -35,13 +35,13 @@ test('filter by region path, wildcard and same-name districts',()=>{
   assert.ok(flatten(items,[[{code:'130000'},{code:'0'}]]).every(v=>v.province==='河北省'));
   assert.equal(flatten(items,[[{code:'99'}]]).length,0);
 });
-test('quantile ties never leave gaps or overlapping colors',()=>{
+test('natural break ties never leave gaps or overlapping colors',()=>{
   for(const values of [[0],[.05,.05,.05],[0,0,.01,.01,.3],[0,.01,.02,.03,.04,.05,.06]]){
-    const bins=quantiles(values);assert.ok(bins.length<=5);
+    const bins=naturalBreaks(values);assert.equal(bins.length,Math.min(9,new Set(values).size));
     for(const v of values)assert.notEqual(colorFor(v,bins),'#e9edf1');
     for(let i=1;i<bins.length;i++)assert.equal(bins[i].min,bins[i-1].max);
   }
-  assert.deepEqual(quantiles([]),[]);
+  assert.deepEqual(naturalBreaks([]),[]);
 });
 test('untrusted fields are discarded and invalid paths rejected',()=>{
   const r=copyRegions([{code:'13',name:'河北省',percent:Infinity,token:'secret',childItems:[]}]);
@@ -54,6 +54,6 @@ test('duplicate codes are quarantined instead of painting an arbitrary value',()
   assert.equal(result.matched.length,0);assert.equal(result.unmatched.length,2);
 });
 test('frequency palette runs from green to red; gray remains reserved for missing data',()=>{
-  const bins=quantiles([0,.01,.02,.03,.04,.05]);
+  const bins=naturalBreaks([0,.01,.02,.03,.04,.05]);
   assert.equal(colorFor(0,bins),'#1a9850');assert.equal(colorFor(.05,bins),'#d73027');assert.equal(COLORS.includes('#e9edf1'),false);
 });
