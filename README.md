@@ -1,5 +1,26 @@
 # Enhanced 23mofang
 
+[![Build and Release](https://github.com/a7884594/Enhanced-23mofang/actions/workflows/build-release.yml/badge.svg)](https://github.com/a7884594/Enhanced-23mofang/actions/workflows/build-release.yml)
+
+## 下载与安装
+
+**[下载最新安装包](https://github.com/a7884594/Enhanced-23mofang/releases/latest)**：展开 Release 页面的 **Assets**，下载名称含 **安装包.zip** 的附件，无需自行编译。GitHub 自动提供的 “Source code” 是源码，不是可直接加载的扩展。
+
+1. 解压安装包，将其中的 `extension` 文件夹放在一个固定位置。
+2. Edge 打开 `edge://extensions`，Chrome 打开 `chrome://extensions`，启用“开发人员模式”。
+3. 点击“加载解压缩的扩展程序”，选择上述 `extension` 文件夹，然后刷新23魔方网页。
+4. 更新时用新版 `extension` 中的文件覆盖原目录，点击已安装扩展的“重新加载”，再刷新网页。保留原目录，不必卸载。
+
+这是本地加载的浏览器扩展，不会通过浏览器商店自动更新。Release 同时提供源码包和 `SHA256SUMS.txt`；所有人可公开下载，无需 GitHub 账号。
+
+## 构建与发布
+
+- 推送到 `main` 或提交 Pull Request 时，GitHub Actions 自动安装锁定依赖、检查类型、运行测试、构建并校验安装包；Actions 的 Artifacts 保留 14 天，属于开发构建。
+- 维护者将 `manifest.json`、`package.json`、`package-lock.json` 的版本同步更新并提交后，创建并推送对应标签（例如 `git tag v1.5.30`，然后 `git push origin v1.5.30`）。只有标签构建通过，才会发布公开 GitHub Release，上传安装包、源码包及校验文件。
+- 标签必须与源码及构建产物中的版本完全一致。工作流使用 GitHub 自动提供的令牌，无需配置额外密钥；已公开 Release 的附件不会在重跑时被覆盖。
+- 可在 Actions → Build and Release → Run workflow 手动生成开发构建；手动运行不会发布 Release。
+- 本地构建需要 Node.js 24 和 Python 3.13：运行 `npm ci`、`npm run check`、`npm test`、`python -m unittest discover -s tests -p 'test_package.py'`、`npm run build`、`python scripts/package.py`。流程使用仓库内地图和测试快照，不要求登录23魔方或联网采集数据。
+
 ## 1.5.30：人数筛选跟随当前网址（2026-10-10）
 
 “最小宗亲人数”不再全局保存或输入后立即应用。输入只改变草稿，点击官方“确定”后才生效；点击“重置”立即清空人数和官方条件，恢复树节点及布局。关闭弹窗保留本次草稿，不改变已经生效的筛选。

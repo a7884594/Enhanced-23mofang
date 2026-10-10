@@ -3,3 +3,5 @@ node_modules/
 dist/
 release/
 test-results/
+__pycache__/
+*.py[cod]
