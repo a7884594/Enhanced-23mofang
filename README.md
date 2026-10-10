@@ -4,7 +4,7 @@
 
 ## 下载与安装
 
-**[下载最新安装包](https://github.com/a7884594/Enhanced-23mofang/releases/latest)**：展开 Release 页面的 **Assets**，下载名称含 **安装包.zip** 的附件，无需自行编译。GitHub 自动提供的 “Source code” 是源码，不是可直接加载的扩展。
+**[下载最新安装包](https://github.com/a7884594/Enhanced-23mofang/releases/latest)**：展开 Release 页面的 **Assets**，下载以 **-installer.zip** 结尾的安装包附件，无需自行编译。GitHub 自动提供的 “Source code” 是源码，不是可直接加载的扩展。
 
 1. 解压安装包，将其中的 `extension` 文件夹放在一个固定位置。
 2. Edge 打开 `edge://extensions`，Chrome 打开 `chrome://extensions`，启用“开发人员模式”。
@@ -20,6 +20,12 @@
 - 标签必须与源码及构建产物中的版本完全一致。工作流使用 GitHub 自动提供的令牌，无需配置额外密钥；已公开 Release 的附件不会在重跑时被覆盖。
 - 可在 Actions → Build and Release → Run workflow 手动生成开发构建；手动运行不会发布 Release。
 - 本地构建需要 Node.js 24 和 Python 3.13：运行 `npm ci`、`npm run check`、`npm test`、`python -m unittest discover -s tests -p 'test_package.py'`、`npm run build`、`python scripts/package.py`。流程使用仓库内地图和测试快照，不要求登录23魔方或联网采集数据。
+
+## 1.5.31：公开安装包自动发布（2026-10-10）
+
+新增 GitHub Actions 自动测试、构建和标签发布。公开附件使用 `-installer.zip`、`-source.zip` 及 `SHA256SUMS.txt`，避免 GitHub 清理中文附件名导致重名。安装包包含项目许可证；源码包包含构建流程，不混入本地测试截图或旧打包残留。发布前校验标签、源码和构建产物版本一致。
+
+功能包含 1.5.29 九档染色和 1.5.30 人数筛选生命周期修复。自动化与本地组件测试已通过；1.5.30 筛选修复的真实登录态验收仍受 Edge 自动化连接问题阻碍，详见验证记录。
 
 ## 1.5.30：人数筛选跟随当前网址（2026-10-10）
 

@@ -55,8 +55,9 @@ class ReleasePackageTests(unittest.TestCase):
         release = self.root / 'release'
         for line in (release / 'SHA256SUMS.txt').read_text(encoding='utf-8').splitlines():
             digest, name = line.split('  ', 1)
+            self.assertTrue(name.isascii(), 'GitHub strips non-ASCII attachment names')
             self.assertEqual(hashlib.sha256((release / name).read_bytes()).hexdigest(), digest)
-        with zipfile.ZipFile(release / 'enhanced-23mofang-v1.5.30-源码.zip') as archive:
+        with zipfile.ZipFile(release / 'enhanced-23mofang-v1.5.30-source.zip') as archive:
             self.assertIn('enhanced-23mofang/.github/workflows/build-release.yml', archive.namelist())
             self.assertIn('enhanced-23mofang/LICENSE', archive.namelist())
             self.assertFalse(any('test-results' in name for name in archive.namelist()))
@@ -81,7 +82,7 @@ class ReleasePackageTests(unittest.TestCase):
         self.assertEqual(self.package().returncode, 0)
         self.write('release/enhanced-23mofang-v1.5.30/extension/stale.js', 'old payload')
         self.assertEqual(self.package().returncode, 0)
-        with zipfile.ZipFile(self.root / 'release/enhanced-23mofang-v1.5.30-安装包.zip') as archive:
+        with zipfile.ZipFile(self.root / 'release/enhanced-23mofang-v1.5.30-installer.zip') as archive:
             self.assertNotIn('extension/stale.js', archive.namelist())
             self.assertIn('LICENSE', archive.namelist())
 

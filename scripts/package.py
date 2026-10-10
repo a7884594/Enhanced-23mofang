@@ -33,7 +33,7 @@ shutil.copy2(root / 'LICENSE', bundle / 'LICENSE')
 for name in ['YFull异名节点核查.md', 'yfull-b482-audit.json']:
     (bundle / name).unlink(missing_ok=True)
 
-installer = release / f'enhanced-23mofang-v{version}-安装包.zip'
+installer = release / f'enhanced-23mofang-v{version}-installer.zip'
 with zipfile.ZipFile(installer, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     # Enumerate current inputs, never stale files left in a previous staging folder.
     for p in sorted((root / 'dist').rglob('*')):
@@ -42,7 +42,7 @@ with zipfile.ZipFile(installer, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z
     for name in ['安装与使用说明.md', '验证记录.md', '行政区域补图核查.md', '字母父系节点核查.md', '多源公开样本说明.md', '23魔方SNP查询探索说明.md', 'YFull字母根节点核查.md', 'LICENSE']:
         z.write(bundle / name, name)
 
-source = release / f'enhanced-23mofang-v{version}-源码.zip'
+source = release / f'enhanced-23mofang-v{version}-source.zip'
 with zipfile.ZipFile(source, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
     for name in ['package.json', 'package-lock.json', 'tsconfig.json', 'manifest.json', '.gitignore', '.github', 'LICENSE', 'README.md', 'VALIDATION.md', 'src', 'scripts', 'tests', 'assets']:
         path = root / name
@@ -88,7 +88,7 @@ for p in [installer, source]:
 
 readme = (root / 'README.md').read_text(encoding='utf-8')
 section = re.search(r'^## ' + re.escape(version) + r'[^\n]*\n(.*?)(?=^## |\Z)', readme, re.M | re.S)
-notes = '下载下方名称含“安装包”的 ZIP，解压后在 Edge / Chrome 扩展管理页开启开发者模式，选择“加载解压缩的扩展”，加载其中的 `extension` 文件夹。\n\n更新时覆盖原扩展目录，再重新加载扩展并刷新23魔方页面。无需自行编译；这不是浏览器商店自动更新包。\n\n附件提供安装包、源码包及 SHA256 校验文件。\n'
+notes = '下载下方以 `-installer.zip` 结尾的安装包，解压后在 Edge / Chrome 扩展管理页开启开发者模式，选择“加载解压缩的扩展”，加载其中的 `extension` 文件夹。\n\n更新时覆盖原扩展目录，再重新加载扩展并刷新23魔方页面。无需自行编译；这不是浏览器商店自动更新包。\n\n附件提供安装包、源码包及 SHA256 校验文件。\n'
 if section:
     notes += '\n## 本版更新\n\n' + section.group(1).strip() + '\n'
 (release / 'RELEASE_NOTES.md').write_text(notes, encoding='utf-8')
